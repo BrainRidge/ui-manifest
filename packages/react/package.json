@@ -1,0 +1,42 @@
+{
+  "name": "@ui-manifest/react",
+  "version": "0.1.0",
+  "description": "Extract routes, components, and (optionally) JSX DOM/dependency-graph trees from a React app's source.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ui-manifest-react": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@ui-manifest/core": "^0.1.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^7.18.3",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "ui-manifest-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "clean": "tsc -b --clean"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-json-schema-generator": "^2.3.0",
+    "typescript": "^5.5.0",
+    "vitest": "^5.0.0"
+  }
+}

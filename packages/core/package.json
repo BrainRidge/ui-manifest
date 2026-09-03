@@ -1,0 +1,25 @@
+{
+  "name": "@ui-manifest/core",
+  "version": "0.1.0",
+  "description": "Shared JSON schema types and dependency-tree resolver for ui-manifest extractors.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  }
+}

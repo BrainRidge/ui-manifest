@@ -1,0 +1,42 @@
+{
+  "name": "@ui-manifest/cli",
+  "version": "0.1.0",
+  "description": "One CLI entry point that dispatches to whichever @ui-manifest extractor(s) are installed.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "bin": {
+    "ui-manifest": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@ui-manifest/core": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@ui-manifest/angular": "^0.1.0",
+    "@ui-manifest/react": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@ui-manifest/angular": {
+      "optional": true
+    },
+    "@ui-manifest/react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ui-manifest/angular": "^0.1.0",
+    "@ui-manifest/react": "^0.1.0",
+    "typescript": "^5.5.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  }
+}

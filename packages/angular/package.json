@@ -1,0 +1,44 @@
+{
+  "name": "@ui-manifest/angular",
+  "version": "0.1.0",
+  "description": "Extract routes, components, and (optionally) template DOM/dependency-graph trees from an Angular app's source.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "ui-manifest-angular": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@ui-manifest/core": "^0.1.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.8.0",
+    "@angular/compiler": ">=17.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@angular/compiler": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@angular/compiler": "^22.1.5",
+    "typescript": "^5.5.0"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  }
+}
