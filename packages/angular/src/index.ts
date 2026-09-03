@@ -1,5 +1,5 @@
 /**
- * @ui-manifest/angular — extracts routes, components, and (optionally) template DOM /
+ * @ui-manifest-json/angular — extracts routes, components, and (optionally) template DOM /
  * dependency-graph trees from an Angular app's `src/app/` directory.
  *
  * Why source-derived extraction: this is a syntactic pass over each `*.component.ts` (via the
@@ -23,11 +23,21 @@
  * selector is spliced in place with that component's own (recursively resolved) template —
  * producing one `RouteDependencyTree` per route, annotated with component-boundary and
  * cycle-detection markers. The splicing/cycle-detection algorithm itself lives in
- * `@ui-manifest/core`'s `resolveRouteDependencyTree`; this package only supplies the
+ * `@ui-manifest-json/core`'s `resolveRouteDependencyTree`; this package only supplies the
  * selector-based `matchFn`. Requires `--with-dom`, since there is no `dom` tree to walk otherwise.
+ *
+ * `typescript` peer range is capped at `<6.0.0` DELIBERATELY, not an oversight — TypeScript 7.x is
+ * Microsoft's native (Go-based) compiler rewrite, and its `typescript` npm package's root export
+ * changed from the classic CJS compiler API to `./lib/version.cjs` (just a version string). Every
+ * `import ts from 'typescript'` in this codebase — and the API shape it then calls
+ * (`ts.createSourceFile`, `ts.SyntaxKind`, decorator/JSX AST walking) — assumes the classic 4.x/5.x
+ * API. An unbounded `>=4.8.0` peer range let npm resolve TS7 as "compatible" and silently broke
+ * every parse with `Cannot read properties of undefined (reading 'Latest')` — caught by installing
+ * this package fresh from the registry (not the monorepo's own hoisted 5.x devDependency) before
+ * release. Revisit this cap only alongside real TS7 API support, not by just widening the range.
  */
-import type { UiManifest } from '@ui-manifest/core';
-import { SCHEMA_VERSION } from '@ui-manifest/core';
+import type { UiManifest } from '@ui-manifest-json/core';
+import { SCHEMA_VERSION } from '@ui-manifest-json/core';
 import { collectComponents } from './component-parser.js';
 import type { AngularExtractConfig, AngularExtractOptions } from './config.js';
 import { resolveConfig } from './config.js';

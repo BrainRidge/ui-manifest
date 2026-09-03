@@ -1,6 +1,6 @@
 # The `UiManifest` schema
 
-Every `@ui-manifest/*` extractor emits the same shape, defined in `@ui-manifest/core`
+Every `@ui-manifest-json/*` extractor emits the same shape, defined in `@ui-manifest-json/core`
 (`packages/core/src/types/`). This page is a plain-language tour; the TypeScript source is the
 actual source of truth — read it if this page and the code ever disagree.
 

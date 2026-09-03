@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DomNode, ElementNode, InterpolationNode, TemplateNode } from '@ui-manifest/core';
+import type { DomNode, ElementNode, InterpolationNode, TemplateNode } from '@ui-manifest-json/core';
 import { detectComponents } from '../src/component-detector.js';
 import { buildDom } from '../src/jsx-dom-parser.js';
 import { createSourceFile } from './helpers.js';

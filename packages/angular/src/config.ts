@@ -14,7 +14,7 @@ export interface AngularExtractOptions {
   /** Parse every component's template via `@angular/compiler`'s real Ivy `parseTemplate()`.
    *  `@angular/compiler` is only imported (lazily) when this is true. Default: false. */
   withDom?: boolean;
-  /** Resolve route -> component dependency trees via `@ui-manifest/core`'s
+  /** Resolve route -> component dependency trees via `@ui-manifest-json/core`'s
    *  `resolveRouteDependencyTree`. Requires `withDom` — see {@link resolveConfig}. Default: false. */
   dependencyGraph?: boolean;
   /** Working directory `targetDir` is resolved against, and the base every `ComponentNode.filePath`

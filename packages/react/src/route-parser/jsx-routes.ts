@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import type { RouteNode } from '@ui-manifest/core';
+import type { RouteNode } from '@ui-manifest-json/core';
 import { PATHLESS_ROUTE_PATH, resolveElementComponent } from './shared.js';
 
 type JsxElementLike = ts.JsxElement | ts.JsxSelfClosingElement;

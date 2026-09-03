@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 export type Framework = 'angular' | 'react';
 
 const PACKAGE_NAMES: Record<Framework, string> = {
-  angular: '@ui-manifest/angular',
-  react: '@ui-manifest/react',
+  angular: '@ui-manifest-json/angular',
+  react: '@ui-manifest-json/react',
 };
 
 /**
@@ -14,7 +14,7 @@ const PACKAGE_NAMES: Record<Framework, string> = {
  * isn't installed (or is installed but wasn't built — no `dist/cli.js` — which is treated the
  * same as "not installed" rather than a confusing crash).
  *
- * Deliberately `import.meta.resolve`, not `require.resolve`: every `@ui-manifest/*` package's
+ * Deliberately `import.meta.resolve`, not `require.resolve`: every `@ui-manifest-json/*` package's
  * `exports` map only declares an `"import"` condition (they're pure ESM), so `require.resolve`
  * fails with `ERR_PACKAGE_PATH_NOT_EXPORTED` even though we never intend to actually `require()`
  * the file's contents — we only want its path, to hand to `spawn()` as a separate process. That's
@@ -74,8 +74,8 @@ export function chooseFramework(
 
   if (available.length === 0) {
     throw new Error(
-      'No extractor installed. Run `npm install --save-dev @ui-manifest/angular` (Angular) or ' +
-        '`@ui-manifest/react` (React).',
+      'No extractor installed. Run `npm install --save-dev @ui-manifest-json/angular` (Angular) or ' +
+        '`@ui-manifest-json/react` (React).',
     );
   }
   if (available.length > 1) {

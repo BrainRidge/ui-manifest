@@ -1,5 +1,5 @@
 {
-  "name": "@ui-manifest/core",
+  "name": "@ui-manifest-json/core",
   "version": "0.1.0",
   "description": "Shared JSON schema types and dependency-tree resolver for ui-manifest extractors.",
   "type": "module",

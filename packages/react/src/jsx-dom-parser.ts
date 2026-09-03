@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import type { DomNode, ElementNode, TemplateNode } from '@ui-manifest/core';
+import type { DomNode, ElementNode, TemplateNode } from '@ui-manifest-json/core';
 import { collectReturnedJsx, isJsxLike, isNullishLiteral, unwrapParens, type JsxLike } from './ts-utils.js';
 
 const EVENT_ATTR_RE = /^on[A-Z]/;

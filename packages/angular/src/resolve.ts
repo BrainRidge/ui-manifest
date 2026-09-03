@@ -1,5 +1,5 @@
-import type { ComponentNode, MatchFn, RouteDependencyTree, RouteNode } from '@ui-manifest/core';
-import { resolveRouteDependencyTree } from '@ui-manifest/core';
+import type { ComponentNode, MatchFn, RouteDependencyTree, RouteNode } from '@ui-manifest-json/core';
+import { resolveRouteDependencyTree } from '@ui-manifest-json/core';
 
 export interface DependencyGraphResult {
   dependencyGraph: RouteDependencyTree[];
@@ -9,7 +9,7 @@ export interface DependencyGraphResult {
 /**
  * Build every routed component's resolved dependency tree (`RouteDependencyTree`), splicing each
  * descendant component's own template in place wherever its selector tag appears — delegating the
- * actual splicing/cycle-detection walk to `@ui-manifest/core`'s `resolveRouteDependencyTree`; this
+ * actual splicing/cycle-detection walk to `@ui-manifest-json/core`'s `resolveRouteDependencyTree`; this
  * module only supplies the Angular-specific `matchFn`.
  *
  * Selector matching (v1 limitation, documented not a bug): only plain tag-name selectors are

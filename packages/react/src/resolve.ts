@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import path from 'node:path';
-import type { ComponentNode, MatchFn } from '@ui-manifest/core';
+import type { ComponentNode, MatchFn } from '@ui-manifest-json/core';
 import { findImportBinding } from './ts-utils.js';
 
 export interface IndexableComponent {
@@ -150,7 +150,7 @@ export function resolveJsxTagToComponent(tag: string, currentFile: string, ctx: 
  * CURRENT component's own `filePath` on every call — required for correctness past one level of
  * splicing: a tag found inside some spliced-in child's template must resolve against that
  * child's own import declarations, not the route root's. `resolveRouteDependencyTree` (in
- * `@ui-manifest/core`) passes the right "current" component through on every call already; this
+ * `@ui-manifest-json/core`) passes the right "current" component through on every call already; this
  * function just has to actually use it instead of closing over one fixed file.
  */
 export function createMatchFn(ctx: ResolveContext): MatchFn {

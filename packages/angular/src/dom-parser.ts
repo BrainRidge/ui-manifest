@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import type { DomNode, ElementNode, StructuralKind, TemplateBranch, TemplateNode } from '@ui-manifest/core';
+import type { DomNode, ElementNode, StructuralKind, TemplateBranch, TemplateNode } from '@ui-manifest-json/core';
 
 // `@angular/compiler` is an optional peer dependency: it must never be imported at module load
 // time, only lazily (and cached) the first time DOM parsing is actually requested (--with-dom).

@@ -1,6 +1,6 @@
 {
-  "name": "@ui-manifest/angular",
-  "version": "0.1.0",
+  "name": "@ui-manifest-json/angular",
+  "version": "0.1.1",
   "description": "Extract routes, components, and (optionally) template DOM/dependency-graph trees from an Angular app's source.",
   "type": "module",
   "license": "MIT",
@@ -22,10 +22,10 @@
     "dist"
   ],
   "dependencies": {
-    "@ui-manifest/core": "^0.1.0"
+    "@ui-manifest-json/core": "^0.1.0"
   },
   "peerDependencies": {
-    "typescript": ">=4.8.0",
+    "typescript": ">=4.8.0 <6.0.0",
     "@angular/compiler": ">=17.0.0"
   },
   "peerDependenciesMeta": {

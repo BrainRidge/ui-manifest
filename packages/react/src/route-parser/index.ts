@@ -26,11 +26,11 @@
  * — see `router-config.ts`'s `detectNavBlocking` for the exact shapes recognized.
  */
 import ts from 'typescript';
-import type { RouteNode } from '@ui-manifest/core';
+import type { RouteNode } from '@ui-manifest-json/core';
 import { parseRouterConfigRoutes } from './router-config.js';
 import { parseJsxRoutes } from './jsx-routes.js';
 
-export type { ReactRoutingPattern } from '@ui-manifest/core';
+export type { ReactRoutingPattern } from '@ui-manifest-json/core';
 
 export interface RouteParseResult {
   routes: RouteNode[];

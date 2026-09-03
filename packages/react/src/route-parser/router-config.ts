@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import type { RouteNode } from '@ui-manifest/core';
+import type { RouteNode } from '@ui-manifest-json/core';
 import { getCalleeName } from '../ts-utils.js';
 import { PATHLESS_ROUTE_PATH, resolveComponentIdentifier, resolveElementComponent } from './shared.js';
 import { routeElementToRouteNode } from './jsx-routes.js';

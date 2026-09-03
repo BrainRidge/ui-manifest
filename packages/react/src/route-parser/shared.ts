@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import type { RouteNode } from '@ui-manifest/core';
+import type { RouteNode } from '@ui-manifest-json/core';
 import { findImportBinding, isJsxLike, unwrapParens } from '../ts-utils.js';
 
 /**

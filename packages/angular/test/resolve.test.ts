@@ -1,4 +1,4 @@
-import type { ComponentNode, ElementNode, RouteNode, TextNode } from '@ui-manifest/core';
+import type { ComponentNode, ElementNode, RouteNode, TextNode } from '@ui-manifest-json/core';
 import { describe, expect, it } from 'vitest';
 import { buildDependencyGraph } from '../src/resolve.js';
 

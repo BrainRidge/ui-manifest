@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import type { PropDefinition } from '@ui-manifest/core';
+import type { PropDefinition } from '@ui-manifest-json/core';
 import type { DetectedComponent } from './component-detector.js';
 
 const EVENT_HANDLER_RE = /^on[A-Z]/;

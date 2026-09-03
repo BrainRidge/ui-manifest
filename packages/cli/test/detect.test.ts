@@ -33,7 +33,7 @@ describe('chooseFramework (pure decision logic)', () => {
 
 describe('detectExtractors (real filesystem probing)', () => {
   it('finds both real workspace-linked extractor packages in this monorepo', () => {
-    // This monorepo has both @ui-manifest/angular and @ui-manifest/react built and workspace-
+    // This monorepo has both @ui-manifest-json/angular and @ui-manifest-json/react built and workspace-
     // linked, so this is a genuine integration check, not a mock — if either package's `main`/
     // `cli.js` build output layout ever drifts from what detect.ts assumes, this test catches it.
     const found = detectExtractors();

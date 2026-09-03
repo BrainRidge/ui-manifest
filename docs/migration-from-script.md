@@ -1,6 +1,6 @@
 # Migrating from the original `gen_ui_manifest.mjs` script
 
-`@ui-manifest/angular` is a direct port of a 419-line prototype script that some teams may already
+`@ui-manifest-json/angular` is a direct port of a 419-line prototype script that some teams may already
 be running as `node scripts/gen_ui_manifest.mjs [--out <path>] [--with-dom]`. If that's you, here's
 exactly what changed.
 
@@ -35,7 +35,7 @@ The top level now wraps the old `{routes, components}` in a small envelope:
 `generatedAt` changes on every run even with zero UI changes — exclude it before diffing two
 manifests, or diff with a tool that ignores it.
 
-Field renames inside `components[]` (the schema is now shared with `@ui-manifest/react`, which
+Field renames inside `components[]` (the schema is now shared with `@ui-manifest-json/react`, which
 forced a few names to generalize):
 
 | Old field | New field |

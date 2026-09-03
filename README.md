@@ -18,10 +18,10 @@ feed it to your own tooling) is entirely up to you.
 
 | Package | What it does |
 |---|---|
-| [`@ui-manifest/core`](packages/core) | The shared `UiManifest` JSON schema (as TypeScript types) and the framework-agnostic dependency-graph resolver both extractors build on. You won't usually install this directly — the extractors depend on it. |
-| [`@ui-manifest/angular`](packages/angular) | Extracts from an Angular app's `*.component.ts` files and `Routes` array. |
-| [`@ui-manifest/react`](packages/react) | Extracts from a React app's function/class components and route configuration (`react-router-dom` JSX or object-config style). |
-| [`@ui-manifest/cli`](packages/cli) | One `ui-manifest` command that detects whichever extractor(s) you have installed. |
+| [`@ui-manifest-json/core`](packages/core) | The shared `UiManifest` JSON schema (as TypeScript types) and the framework-agnostic dependency-graph resolver both extractors build on. You won't usually install this directly — the extractors depend on it. |
+| [`@ui-manifest-json/angular`](packages/angular) | Extracts from an Angular app's `*.component.ts` files and `Routes` array. |
+| [`@ui-manifest-json/react`](packages/react) | Extracts from a React app's function/class components and route configuration (`react-router-dom` JSX or object-config style). |
+| [`@ui-manifest-json/cli`](packages/cli) | One `ui-manifest` command that detects whichever extractor(s) you have installed. |
 
 Install only what you need — a React-only repo never needs to pull in `@angular/compiler`, and
 vice versa.
@@ -29,14 +29,14 @@ vice versa.
 ## Quick start
 
 ```bash
-npm install --save-dev @ui-manifest/angular
-# or: npm install --save-dev @ui-manifest/react
+npm install --save-dev @ui-manifest-json/angular
+# or: npm install --save-dev @ui-manifest-json/react
 
 npx ui-manifest-angular --with-dom --out ui-manifest.json
 # or: npx ui-manifest-react --with-dom --out ui-manifest.json
 ```
 
-With `@ui-manifest/cli` installed alongside one or both extractors, use the single `ui-manifest`
+With `@ui-manifest-json/cli` installed alongside one or both extractors, use the single `ui-manifest`
 command instead — it detects which extractor(s) are present and dispatches automatically.
 
 ### Tracking UI changes over time

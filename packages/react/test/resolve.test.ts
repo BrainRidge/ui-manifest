@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import ts from 'typescript';
-import { resolveRouteDependencyTree, type ComponentNode } from '@ui-manifest/core';
+import { resolveRouteDependencyTree, type ComponentNode } from '@ui-manifest-json/core';
 import { detectComponents } from '../src/component-detector.js';
 import { buildDom } from '../src/jsx-dom-parser.js';
 import {

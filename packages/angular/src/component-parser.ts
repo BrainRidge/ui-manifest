@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import { globSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import type { ComponentNode, PropertyBinding } from '@ui-manifest/core';
+import type { ComponentNode, PropertyBinding } from '@ui-manifest-json/core';
 import type { AngularExtractConfig } from './config.js';
 import { parseComponentDom, resolveTemplateSource } from './dom-parser.js';
 

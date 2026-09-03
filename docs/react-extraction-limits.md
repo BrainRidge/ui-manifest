@@ -1,13 +1,13 @@
 # React extraction: what's real, what's a best-effort guess
 
-`@ui-manifest/react` uses the same syntactic-parsing posture as `@ui-manifest/angular` — no
+`@ui-manifest-json/react` uses the same syntactic-parsing posture as `@ui-manifest-json/angular` — no
 type-checker `Program`, just TypeScript's own AST over each file. But there's a fundamental
 asymmetry between the two frameworks worth understanding before you trust the output:
 
 Angular has a **first-class template grammar** — `@if`/`@for`/`@switch`/`*ngIf` are syntax the Ivy
-compiler parses completely, so `@ui-manifest/angular` either understands a construct fully or fails
+compiler parses completely, so `@ui-manifest-json/angular` either understands a construct fully or fails
 loudly. React has no such grammar: conditional rendering is just arbitrary JavaScript expressions
-that happen to appear inside JSX. `@ui-manifest/react` can only ever pattern-match the *common
+that happen to appear inside JSX. `@ui-manifest-json/react` can only ever pattern-match the *common
 shapes* people actually write, not guarantee it caught every way a component might conditionally
 render something.
 

@@ -23,7 +23,7 @@ will have, not the source file's real extension.
   framework-agnostic dependency-graph resolver (`resolveRouteDependencyTree`). Both extractors
   depend on this; it depends on nothing.
 - `packages/angular`, `packages/react` — one extractor package per framework. Each owns its own
-  parsing logic but must emit exactly the shapes `@ui-manifest/core` defines — if you need a field
+  parsing logic but must emit exactly the shapes `@ui-manifest-json/core` defines — if you need a field
   a framework genuinely can't populate, leave it `undefined`/omit it; don't invent a mismatched
   shape to route around a schema gap. If the schema itself needs to grow, that's a `core` change,
   proposed and reviewed on its own, since both extractors and any downstream consumer depend on it

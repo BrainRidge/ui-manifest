@@ -8,7 +8,7 @@ import {
   type RouteDependencyTree,
   type RouteNode,
   type UiManifest,
-} from '@ui-manifest/core';
+} from '@ui-manifest-json/core';
 import { resolveConfig, type ExtractConfig } from './config.js';
 import { detectComponents } from './component-detector.js';
 import { extractProps } from './props-parser.js';
@@ -68,7 +68,13 @@ function scriptKindForFile(filePath: string): ts.ScriptKind {
 /**
  * Extract routes, components, and (optionally) JSX DOM/dependency-graph trees from a React app's
  * source tree. Syntactic parsing only (TypeScript's own parser, no type checker `Program`) — same
- * posture as the `@ui-manifest/angular` extractor.
+ * posture as the `@ui-manifest-json/angular` extractor.
+ *
+ * `typescript` peer range is capped at `<6.0.0` DELIBERATELY — see the matching note in
+ * `@ui-manifest-json/angular`'s `index.ts`. TypeScript 7.x's native (Go-based) rewrite restructured
+ * the `typescript` npm package so its root export is no longer the classic compiler API every
+ * `import ts from 'typescript'` in this codebase assumes; an unbounded peer range let npm resolve
+ * TS7 as "compatible" and silently broke every parse.
  */
 export async function extract(options: Partial<ExtractConfig> = {}): Promise<UiManifest> {
   const config = resolveConfig(options);
