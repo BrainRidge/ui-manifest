@@ -24,6 +24,19 @@ jobs:
       # Publishes every workspace package whose package.json version isn't already on the
       # registry; already-published versions are skipped rather than erroring, so a tag that
       # only bumped one package doesn't require this step to know which one.
+      #
+      # BOTH token names, deliberately. npm's config precedence is cli > env > PROJECT .npmrc >
+      # userconfig, and there are two .npmrc files in play here:
+      #
+      #   .npmrc (this repo, wins)          //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+      #   setup-node's temp file (loses)    //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+      #
+      # Setting only NODE_AUTH_TOKEN left the repo's own .npmrc interpolating an unset
+      # ${NPM_TOKEN} to nothing, so publish failed with ENEEDAUTH having built and packed every
+      # tarball. The repo .npmrc is worth keeping — it is what makes a local `NPM_TOKEN=... npm
+      # publish` work, which is how earlier releases went out — so the workflow supplies both
+      # rather than either file being deleted.
       - run: npm publish --workspaces --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
