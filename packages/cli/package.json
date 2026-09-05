@@ -1,6 +1,6 @@
 {
   "name": "@ui-manifest-json/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "One CLI entry point that dispatches to whichever @ui-manifest extractor(s) are installed.",
   "type": "module",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "dist"
   ],
   "dependencies": {
-    "@ui-manifest-json/core": "^0.1.0"
+    "@ui-manifest-json/core": "^0.2.0"
   },
   "peerDependencies": {
     "@ui-manifest-json/angular": "^0.1.0",

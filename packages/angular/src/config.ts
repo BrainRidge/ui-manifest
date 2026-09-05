@@ -20,6 +20,18 @@ export interface AngularExtractOptions {
   /** Working directory `targetDir` is resolved against, and the base every `ComponentNode.filePath`
    *  in the output is made relative to. Default: `process.cwd()`. */
   cwd?: string;
+  /** Override the detected `<base href>`. Supply this when the app is served from a subpath the
+   *  source does not state — a reverse proxy, or a base href injected at deploy time. */
+  baseHref?: string;
+  /** Override the detected router mode (`"path"` | `"hash"`). */
+  routerMode?: 'path' | 'hash';
+  /**
+   * Whether this run covers the whole app (`"full"`, the default) or a named part of it
+   * (`"partial"`). Only a `"full"` manifest licenses a consumer to read a route's ABSENCE as
+   * deletion; declaring `"partial"` when scanning a subtree is what stops a merge from silently
+   * dropping every route the run did not look at.
+   */
+  coverage?: 'full' | 'partial';
 }
 
 /** Fully-resolved configuration: every path absolute, every flag defaulted. */
@@ -29,6 +41,9 @@ export interface AngularExtractConfig {
   withDom: boolean;
   dependencyGraph: boolean;
   cwd: string;
+  baseHref?: string;
+  routerMode?: 'path' | 'hash';
+  coverage: 'full' | 'partial';
 }
 
 /**
@@ -49,5 +64,10 @@ export function resolveConfig(options: AngularExtractOptions = {}): AngularExtra
     throw new Error('--dependency-graph requires --with-dom');
   }
 
-  return { targetDir, routesFile, withDom, dependencyGraph, cwd };
+  return {
+    targetDir, routesFile, withDom, dependencyGraph, cwd,
+    baseHref: options.baseHref,
+    routerMode: options.routerMode,
+    coverage: options.coverage ?? 'full',
+  };
 }

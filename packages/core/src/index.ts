@@ -1,7 +1,11 @@
 export * from './types/dom.js';
 export * from './types/component.js';
 export * from './types/route.js';
+export * from './types/provenance.js';
 export * from './types/dependency-graph.js';
 export * from './types/manifest.js';
+export { resolveFullPaths } from './full-path.js';
+export { collectRepoProvenance, generatorProvenance } from './provenance.js';
+export type { CollectProvenanceOptions } from './provenance.js';
 export { resolveRouteDependencyTree } from './resolve-tree.js';
 export type { MatchFn } from './resolve-tree.js';

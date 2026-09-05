@@ -140,6 +140,13 @@ function elementToPlain(node: ElementAst, ng: Compiler, filePath: string, diagno
 function contentToPlain(node: ContentAst, ng: Compiler, filePath: string, diagnostics: string[]): ElementNode {
   const attrs: Record<string, string> = {};
   if (node.selector && node.selector !== '*') attrs.select = node.selector;
+  // `TmplAstContent` gained `children` after Angular 17: back then `<ng-content>` was
+  // self-closing by construction and the class had no such property, so reading it threw
+  // `Cannot read properties of undefined (reading 'map')` for every template containing an
+  // `<ng-content>` — which is most component libraries. Same family as `switchGroups` above, and
+  // found the same way: installing the packed tarball against each version in the declared peer
+  // range. Empty is not a fallback here, it is what the old shape MEANS.
+  const children = (node as { children?: unknown[] }).children ?? [];
   return {
     type: 'element',
     extraction: 'compiler',
@@ -147,7 +154,7 @@ function contentToPlain(node: ContentAst, ng: Compiler, filePath: string, diagno
     attrs,
     props: [],
     events: [],
-    children: childrenToPlain(node.children, ng, filePath, diagnostics),
+    children: childrenToPlain(children as Parameters<typeof childrenToPlain>[0], ng, filePath, diagnostics),
   };
 }
 
@@ -221,14 +228,51 @@ function forLoopToPlain(node: ForLoopBlockAst, ng: Compiler, filePath: string, d
   };
 }
 
+/**
+ * One `@switch` branch, normalised across the two shapes Angular's AST has had.
+ *
+ * A group holds the several `@case`s that FALL THROUGH to one body, plus that body.
+ */
+export interface SwitchGroup {
+  cases: { expression: unknown }[];
+  children: unknown[];
+}
+
+/**
+ * Angular 22 renamed `SwitchBlock.cases` to `.groups` and changed its element type, and this
+ * package declares `@angular/compiler: ">=17.0.0"`. Reading only the new shape threw
+ * `Cannot read properties of undefined (reading 'map')` on **every `@switch` block** for anyone on
+ * 17–21 — which is most users, and was invisible here because the monorepo's own devDependency is
+ * 22.x. Found by installing the packed tarball into a clean project against Angular 19, the same
+ * way the `typescript` 7.x peer break was found.
+ *
+ * The two shapes are not merely renamed. Pre-22 each `SwitchBlockCase` is one case with its own
+ * `children`; from 22 a `SwitchBlockCaseGroup` holds several `cases` sharing one `children`, which
+ * is how `@case (a) @case (b) { … }` fall-through is represented. The 22 model is strictly richer,
+ * so normalising OLD onto NEW is lossless — each old case becomes a group of exactly one.
+ *
+ * Feature-detected on the value, not the version: the compiler is an optional peer dependency
+ * resolved by the consumer, so its version is not something this package can know, and reading the
+ * property that exists is both simpler and correct across any future rename in either direction.
+ */
+export function switchGroups(node: SwitchBlockAst): SwitchGroup[] {
+  const withGroups = node as unknown as { groups?: SwitchGroup[] };
+  if (Array.isArray(withGroups.groups)) return withGroups.groups;
+
+  const legacy = node as unknown as { cases?: { expression: unknown; children: unknown[] }[] };
+  return (legacy.cases ?? []).map(c => ({ cases: [c], children: c.children }));
+}
+
 function switchToPlain(node: SwitchBlockAst, ng: Compiler, filePath: string, diagnostics: string[]): TemplateNode {
-  const branches: TemplateBranch[] = node.groups.map(g => {
+  const branches: TemplateBranch[] = switchGroups(node).map(g => {
     const isDefault = g.cases.length === 0 || g.cases.every(c => c.expression === null);
-    const label = isDefault ? 'default' : g.cases.map(c => exprSource(c.expression)).join(', ');
+    const label = isDefault
+      ? 'default'
+      : g.cases.map(c => exprSource(c.expression as Parameters<typeof exprSource>[0])).join(', ');
     return {
       label,
       ...(isDefault ? {} : { condition: label }),
-      children: childrenToPlain(g.children, ng, filePath, diagnostics),
+      children: childrenToPlain(g.children as Parameters<typeof childrenToPlain>[0], ng, filePath, diagnostics),
     };
   });
   return {

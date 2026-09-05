@@ -53,6 +53,35 @@ Because the manifest is deterministic (sorted output, no timestamps baked into t
 fields), a diff only ever shows real structural changes — added/removed routes, components, inputs,
 outputs, or template branches — not noise.
 
+Two blocks are deliberately *not* diffable and should be stripped before comparing: `generatedAt`
+and `provenance` (which commit produced this, which extractor version, which CI run) change on every
+run. `jq 'del(.generatedAt, .provenance)'` leaves the part that only changes when the UI does.
+
+### Knowing which build a manifest describes
+
+```bash
+npx ui-manifest-angular --out ui-manifest.json
+```
+
+Every manifest records the commit it was generated from, the remote it came from, whether the tree
+was dirty, and which extractor version and analysis passes produced it — so a manifest can be
+matched against a deployed build rather than only against another manifest. Outside a git tree
+those fields are simply absent: the manifest is unpinned, which is a fact about it rather than a
+failure.
+
+It also records **how the app is served** — `<base href>` / React Router `basename`, and whether
+routing is path- or hash-based — because a route path is not a URL until those are applied. An app
+served under `/portal/` renders `/portal/dashboard`, and anything matching route paths against real
+URLs without knowing that matches nothing at all. Both are detected from the source where possible;
+pass `--base-href` / `--router-mode` when they are set at deploy time instead:
+
+```bash
+npx ui-manifest-angular --base-href /portal --router-mode hash --out ui-manifest.json
+```
+
+Scanning only part of an app? Pass `--coverage partial` so a consumer does not read the routes you
+did not look at as routes you deleted.
+
 ### The dependency graph
 
 Pass `--dependency-graph` (requires `--with-dom`) to additionally resolve, for every route, the

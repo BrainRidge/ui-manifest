@@ -18,6 +18,9 @@ function printUsage(): void {
       '  --with-dom            Also emit ComponentNode.dom (JSX -> DomNode trees)',
       '  --dependency-graph    Also emit UiManifest.dependencyGraph (implies --with-dom)',
       '  --warn-unnamed        Emit a diagnostic for each skipped anonymous default export',
+      '  --base-href <path>    Override the detected router basename (default: detected, else "/")',
+      '  --router-mode <mode>  "path" or "hash" (default: detected, else "path")',
+      '  --coverage <kind>     "full" or "partial" — whether a missing route means deleted',
       '  --out <path>          Write JSON to a file instead of stdout',
       '  -h, --help            Show this help text',
       '',
@@ -45,6 +48,25 @@ function parseArgs(argv: string[]): CliOptions {
       case '--warn-unnamed':
         options.warnUnnamed = true;
         break;
+      case '--base-href':
+        options.baseHref = argv[++i];
+        break;
+      case '--router-mode': {
+        const mode = argv[++i];
+        if (mode !== 'path' && mode !== 'hash') {
+          throw new Error(`--router-mode must be "path" or "hash" (got ${JSON.stringify(mode)})`);
+        }
+        options.routerMode = mode;
+        break;
+      }
+      case '--coverage': {
+        const coverage = argv[++i];
+        if (coverage !== 'full' && coverage !== 'partial') {
+          throw new Error(`--coverage must be "full" or "partial" (got ${JSON.stringify(coverage)})`);
+        }
+        options.coverage = coverage;
+        break;
+      }
       case '--out':
         options.out = argv[++i];
         break;

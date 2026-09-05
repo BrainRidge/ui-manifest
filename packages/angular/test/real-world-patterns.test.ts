@@ -47,7 +47,9 @@ describe('real-world Angular Router patterns', () => {
     );
 
     const manifest = await extract({ cwd: dir });
-    expect(manifest.routes).toEqual([{ path: '', component: { module: './home/home.component', export: 'HomeComponent' } }]);
+    expect(manifest.routes).toEqual([
+      { path: '', fullPath: '/', component: { module: './home/home.component', export: 'HomeComponent' } },
+    ]);
     expect(manifest.diagnostics ?? []).toEqual([]);
   });
 
@@ -75,7 +77,7 @@ describe('real-world Angular Router patterns', () => {
 
     const manifest = await extract({ cwd: dir });
     expect(manifest.routes).toEqual([
-      { path: 'settings', component: { module: 'src/app/settings/settings.component.ts', export: 'SettingsComponent' } },
+      { path: 'settings', fullPath: '/settings', component: { module: 'src/app/settings/settings.component.ts', export: 'SettingsComponent' } },
     ]);
   });
 
@@ -107,7 +109,14 @@ describe('real-world Angular Router patterns', () => {
     expect(manifest.routes).toEqual([
       {
         path: 'profile',
-        children: [{ path: ':username', component: { module: './profile.component', export: 'ProfileComponent' } }],
+        fullPath: '/profile',
+        // The nested route's fullPath is the point of the field: `:username` alone is not a
+        // location, and two features' index routes would otherwise share a key.
+        children: [{
+          path: ':username',
+          fullPath: '/profile/:username',
+          component: { module: './profile.component', export: 'ProfileComponent' },
+        }],
       },
     ]);
     expect(manifest.diagnostics ?? []).toEqual([]);

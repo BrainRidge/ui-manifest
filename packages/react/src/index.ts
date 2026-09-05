@@ -3,6 +3,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import {
   SCHEMA_VERSION,
+  collectRepoProvenance,
+  generatorProvenance,
+  resolveFullPaths,
   resolveRouteDependencyTree,
   type ComponentNode,
   type RouteDependencyTree,
@@ -14,6 +17,8 @@ import { detectComponents } from './component-detector.js';
 import { extractProps } from './props-parser.js';
 import { buildDom } from './jsx-dom-parser.js';
 import { parseRoutesInFile, type RouteParseResult } from './route-parser/index.js';
+import { detectAppIdentity } from './app-identity.js';
+import { PACKAGE_NAME, PACKAGE_VERSION } from './version.js';
 import { buildComponentIndex, createMatchFn, resolveJsxTagToComponent, type IndexableComponent, type ResolveContext } from './resolve.js';
 
 export type { ExtractConfig } from './config.js';
@@ -78,6 +83,10 @@ function scriptKindForFile(filePath: string): ts.ScriptKind {
  */
 export async function extract(options: Partial<ExtractConfig> = {}): Promise<UiManifest> {
   const config = resolveConfig(options);
+  // Absolute, because provenance asks git FROM the scanned tree — `--dir` can point at a checkout
+  // that is not the one the command was run in, and asking about the process's cwd would pin the
+  // manifest to an unrelated repository's HEAD while looking like a correct pin.
+  const absDir = path.resolve(process.cwd(), config.dir);
   const filePaths = await walkSourceFiles(config.dir);
 
   const files = new Map<string, ts.SourceFile>();
@@ -121,9 +130,27 @@ export async function extract(options: Partial<ExtractConfig> = {}): Promise<UiM
     diagnostics.push(...result.diagnostics);
   }
 
+  // Detected BEFORE fullPath resolution, because basename is part of every path it produces. The
+  // same files the route parser walked, so the router setup is found without a second pass.
+  const app = detectAppIdentity({
+    files,
+    overrides: { baseHref: config.baseHref, routerMode: config.routerMode },
+  });
+  resolveFullPaths(routes, app.baseHref);
+
+  const passes = ['routes', 'components'];
+  if (config.withDom) passes.push('dom');
+  if (config.dependencyGraph) passes.push('dependency-graph');
+
   const manifest: UiManifest = {
     schemaVersion: SCHEMA_VERSION,
     framework: 'react',
+    app,
+    provenance: {
+      repo: collectRepoProvenance({ targetDir: absDir, cwd: process.cwd() }),
+      generator: generatorProvenance(PACKAGE_NAME, PACKAGE_VERSION, passes),
+    },
+    coverage: config.coverage,
     generatedAt: new Date().toISOString(),
     routes,
     components: indexableComponents.map(e => e.node),

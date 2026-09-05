@@ -16,6 +16,14 @@ export interface ExtractConfig {
   dependencyGraph: boolean;
   /** Emit a diagnostics entry for every anonymous default-exported component skipped. */
   warnUnnamed: boolean;
+  /** Override the detected router `basename`, for an app served from a subpath the source does
+   *  not state (a reverse proxy, or a basename injected at deploy time). */
+  baseHref?: string;
+  /** Override the detected router mode (`"path"` | `"hash"`). */
+  routerMode?: 'path' | 'hash';
+  /** Whether this run covers the whole app (`"full"`) or a named part of it (`"partial"`). Only a
+   *  `"full"` manifest licenses a consumer to read a route's ABSENCE as deletion. */
+  coverage: 'full' | 'partial';
 }
 
 export const DEFAULT_CONFIG: ExtractConfig = {
@@ -23,6 +31,7 @@ export const DEFAULT_CONFIG: ExtractConfig = {
   withDom: false,
   dependencyGraph: false,
   warnUnnamed: false,
+  coverage: 'full',
 };
 
 export function resolveConfig(partial: Partial<ExtractConfig> = {}): ExtractConfig {

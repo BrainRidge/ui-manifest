@@ -1,6 +1,6 @@
 {
   "name": "@ui-manifest-json/react",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Extract routes, components, and (optionally) JSX DOM/dependency-graph trees from a React app's source.",
   "type": "module",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "dist"
   ],
   "dependencies": {
-    "@ui-manifest-json/core": "^0.1.0"
+    "@ui-manifest-json/core": "^0.2.0"
   },
   "peerDependencies": {
     "typescript": ">=4.8.0 <6.0.0"

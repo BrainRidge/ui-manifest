@@ -57,7 +57,9 @@ describe('extract', () => {
     expect(typeof manifest.generatedAt).toBe('string');
     expect(() => new Date(manifest.generatedAt).toISOString()).not.toThrow();
 
-    expect(manifest.routes).toEqual([{ path: '', component: { module: './root/root.component', export: 'RootComponent' } }]);
+    expect(manifest.routes).toEqual([
+      { path: '', fullPath: '/', component: { module: './root/root.component', export: 'RootComponent' } },
+    ]);
     expect(manifest.components.map(c => c.className).sort()).toEqual(['ChildComponent', 'RootComponent']);
     expect(manifest.components.every(c => c.dom === undefined)).toBe(true);
     expect(manifest.dependencyGraph).toBeUndefined();

@@ -37,7 +37,14 @@
  * release. Revisit this cap only alongside real TS7 API support, not by just widening the range.
  */
 import type { UiManifest } from '@ui-manifest-json/core';
-import { SCHEMA_VERSION } from '@ui-manifest-json/core';
+import {
+  SCHEMA_VERSION,
+  collectRepoProvenance,
+  generatorProvenance,
+  resolveFullPaths,
+} from '@ui-manifest-json/core';
+import { PACKAGE_NAME, PACKAGE_VERSION } from './version.js';
+import { detectAppIdentity } from './app-identity.js';
 import { collectComponents } from './component-parser.js';
 import type { AngularExtractConfig, AngularExtractOptions } from './config.js';
 import { resolveConfig } from './config.js';
@@ -64,9 +71,28 @@ export async function extract(options: AngularExtractOptions = {}): Promise<UiMa
   const { routes, diagnostics: routeDiagnostics } = collectRoutes(config, buildComponentLookup(components));
   diagnostics.push(...routeDiagnostics);
 
+  // Detected BEFORE fullPath resolution, because baseHref is part of every path it produces.
+  const { app, diagnostics: appDiagnostics } = detectAppIdentity({
+    targetDir: config.targetDir,
+    cwd: config.cwd,
+    overrides: { baseHref: config.baseHref, routerMode: config.routerMode },
+  });
+  diagnostics.push(...appDiagnostics);
+  resolveFullPaths(routes, app.baseHref);
+
+  const passes = ['routes', 'components'];
+  if (config.withDom) passes.push('dom');
+  if (config.dependencyGraph) passes.push('dependency-graph');
+
   const manifest: UiManifest = {
     schemaVersion: SCHEMA_VERSION,
     framework: 'angular',
+    app,
+    provenance: {
+      repo: collectRepoProvenance({ targetDir: config.targetDir, cwd: config.cwd }),
+      generator: generatorProvenance(PACKAGE_NAME, PACKAGE_VERSION, passes),
+    },
+    coverage: config.coverage,
     generatedAt: new Date().toISOString(),
     routes,
     components,
