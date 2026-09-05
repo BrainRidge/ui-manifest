@@ -1,8 +1,9 @@
 import ts from 'typescript';
-import { globSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import type { ComponentNode, PropertyBinding } from '@ui-manifest-json/core';
 import type { AngularExtractConfig } from './config.js';
+import { findFiles } from './find-files.js';
 import { parseComponentDom, resolveTemplateSource } from './dom-parser.js';
 
 export interface ComponentParseResult {
@@ -227,7 +228,10 @@ export async function extractComponentsFromSource(
 /** Walk `config.targetDir` for every `*.component.ts` (excluding `.spec.ts`) and extract each
  *  `@Component`-decorated class into a `ComponentNode`. */
 export async function collectComponents(config: AngularExtractConfig): Promise<ComponentParseResult> {
-  const files = globSync('**/*.component.ts', { cwd: config.targetDir }).filter(f => !f.endsWith('.spec.ts'));
+  const files = findFiles(
+    config.targetDir,
+    rel => rel.endsWith('.component.ts') && !rel.endsWith('.spec.ts'),
+  );
   const diagnostics: string[] = [];
   const components: ComponentNode[] = [];
   for (const rel of files) {

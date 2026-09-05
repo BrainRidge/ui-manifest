@@ -15,8 +15,10 @@
  * Syntactic, like the rest of this package: `index.html` is read as text and the router setup is
  * matched in the TypeScript AST. Nothing is executed and no `Program` is loaded.
  */
-import { existsSync, globSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+
+import { findFiles } from './find-files.js';
 
 import type { AppIdentity, RouterMode } from '@ui-manifest-json/core';
 
@@ -64,36 +66,29 @@ function normaliseBaseHref(raw: string): string {
  * positive here is worse than a miss — a miss defaults and says so, where a false positive presents
  * a wrong answer with `confidence: "detected"`.
  */
-const ROUTER_SETUP_GLOBS = [
-  'main.ts',
-  'app.config.ts',
-  'app.module.ts',
-  'app/app.config.ts',
-  'app/app.module.ts',
-  'app/*.routes.ts',
-];
+const ROUTER_SETUP_FILES = new Set(['main.ts', 'app.config.ts', 'app.module.ts']);
+
+/** A routes file is matched by suffix rather than by name: `app.routes.ts` is the convention, but
+ *  a feature-split app legitimately has `admin.routes.ts` alongside it. */
+function isRouterSetupFile(relativePath: string): boolean {
+  const name = relativePath.split('/').pop() ?? '';
+  return ROUTER_SETUP_FILES.has(name) || name.endsWith('.routes.ts');
+}
 
 function routerSetupTexts(targetDir: string, cwd: string): string[] {
-  const src = dirname(targetDir);
-  const roots = [src, cwd];
   const texts: string[] = [];
   const seen = new Set<string>();
-  for (const root of roots) {
-    for (const pattern of ROUTER_SETUP_GLOBS) {
-      let matches: string[];
+  // `src/` first (where an Angular CLI project keeps main.ts and app/), then cwd for a layout that
+  // does not follow it. Deduplicated by absolute path, since the two overlap in the common case.
+  for (const root of [dirname(targetDir), cwd]) {
+    for (const rel of findFiles(root, isRouterSetupFile)) {
+      const file = resolve(root, rel);
+      if (seen.has(file)) continue;
+      seen.add(file);
       try {
-        matches = globSync(pattern, { cwd: root }).map(m => resolve(root, m));
+        texts.push(readFileSync(file, 'utf8'));
       } catch {
-        continue;
-      }
-      for (const file of matches) {
-        if (seen.has(file)) continue;
-        seen.add(file);
-        try {
-          texts.push(readFileSync(file, 'utf8'));
-        } catch {
-          // Unreadable is the same as absent for this purpose.
-        }
+        // Unreadable is the same as absent for this purpose.
       }
     }
   }
