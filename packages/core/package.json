@@ -1,9 +1,25 @@
 {
   "name": "@ui-manifest-json/core",
   "version": "0.2.0",
-  "description": "Shared JSON schema types and dependency-tree resolver for ui-manifest extractors.",
+  "description": "Shared JSON schema types and framework-agnostic helpers for ui-manifest extractors.",
+  "keywords": [
+    "ui-manifest",
+    "schema",
+    "types",
+    "ast",
+    "static-analysis"
+  ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BrainRidge/ui-manifest.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/BrainRidge/ui-manifest/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/BrainRidge/ui-manifest/issues"
+  },
   "engines": {
     "node": ">=20.6.0"
   },

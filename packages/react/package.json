@@ -1,9 +1,28 @@
 {
   "name": "@ui-manifest-json/react",
   "version": "0.2.0",
-  "description": "Extract routes, components, and (optionally) JSX DOM/dependency-graph trees from a React app's source.",
+  "description": "Extract a diffable JSON manifest of routes, components and JSX trees from a React app's source.",
+  "keywords": [
+    "react",
+    "react-router",
+    "ui-manifest",
+    "routes",
+    "components",
+    "jsx",
+    "static-analysis",
+    "diff"
+  ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BrainRidge/ui-manifest.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/BrainRidge/ui-manifest/tree/main/packages/react#readme",
+  "bugs": {
+    "url": "https://github.com/BrainRidge/ui-manifest/issues"
+  },
   "engines": {
     "node": ">=20.6.0"
   },
@@ -21,6 +40,10 @@
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@ui-manifest-json/core": "^0.2.0"
   },
@@ -34,9 +57,5 @@
     "react-router-dom": "^7.18.3",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0"
-  },
-  "scripts": {
-    "build": "tsc -b",
-    "test": "vitest run"
   }
 }

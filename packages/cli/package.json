@@ -1,26 +1,45 @@
 {
   "name": "@ui-manifest-json/cli",
   "version": "0.2.0",
-  "description": "One CLI entry point that dispatches to whichever @ui-manifest extractor(s) are installed.",
+  "description": "One `ui-manifest` command that dispatches to whichever ui-manifest extractor you have installed.",
+  "keywords": [
+    "ui-manifest",
+    "cli",
+    "angular",
+    "react"
+  ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BrainRidge/ui-manifest.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/BrainRidge/ui-manifest/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/BrainRidge/ui-manifest/issues"
+  },
   "engines": {
     "node": ">=20.6.0"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
     "ui-manifest": "./dist/cli.js"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@ui-manifest-json/core": "^0.2.0"
   },
   "peerDependencies": {
-    "@ui-manifest-json/angular": "^0.1.0",
-    "@ui-manifest-json/react": "^0.1.0"
+    "@ui-manifest-json/angular": ">=0.2.0",
+    "@ui-manifest-json/react": ">=0.2.0"
   },
   "peerDependenciesMeta": {
     "@ui-manifest-json/angular": {
@@ -31,12 +50,8 @@
     }
   },
   "devDependencies": {
-    "@ui-manifest-json/angular": "^0.1.0",
-    "@ui-manifest-json/react": "^0.1.0",
+    "@ui-manifest-json/angular": ">=0.2.0",
+    "@ui-manifest-json/react": ">=0.2.0",
     "typescript": "^5.5.0"
-  },
-  "scripts": {
-    "build": "tsc -b",
-    "test": "vitest run"
   }
 }

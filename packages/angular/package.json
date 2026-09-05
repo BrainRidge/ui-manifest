@@ -1,9 +1,27 @@
 {
   "name": "@ui-manifest-json/angular",
   "version": "0.2.0",
-  "description": "Extract routes, components, and (optionally) template DOM/dependency-graph trees from an Angular app's source.",
+  "description": "Extract a diffable JSON manifest of routes, components and template trees from an Angular app's source.",
+  "keywords": [
+    "angular",
+    "ui-manifest",
+    "routes",
+    "components",
+    "template",
+    "static-analysis",
+    "diff"
+  ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BrainRidge/ui-manifest.git",
+    "directory": "packages/angular"
+  },
+  "homepage": "https://github.com/BrainRidge/ui-manifest/tree/main/packages/angular#readme",
+  "bugs": {
+    "url": "https://github.com/BrainRidge/ui-manifest/issues"
+  },
   "engines": {
     "node": ">=20.6.0"
   },
@@ -21,6 +39,10 @@
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@ui-manifest-json/core": "^0.2.0"
   },
@@ -36,9 +58,5 @@
   "devDependencies": {
     "@angular/compiler": "^22.1.5",
     "typescript": "^5.5.0"
-  },
-  "scripts": {
-    "build": "tsc -b",
-    "test": "vitest run"
   }
 }
