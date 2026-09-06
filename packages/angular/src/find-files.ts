@@ -8,9 +8,9 @@
  * suite passed everywhere except CI.
  *
  * A hand-rolled walk rather than a glob dependency, matching what the React extractor already does
- * in its own `walkSourceFiles`: the only patterns this package needs are "every `*.component.ts`
- * under a root" and "these few named files", neither of which is worth a dependency or a
- * Node-version floor.
+ * in its own `walkSourceFiles`: the only patterns this package needs are "every `.ts` under a
+ * root" and "these few named files", neither of which is worth a dependency or a Node-version
+ * floor.
  */
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';

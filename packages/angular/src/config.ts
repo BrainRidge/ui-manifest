@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 /** Options accepted by {@link resolveConfig} / the public {@link extract} API. Every field is
  *  optional and defaults the same way the CLI flags described in the package README do. */
 export interface AngularExtractOptions {
-  /** Directory to scan for `*.component.ts` files, resolved relative to `cwd`. Default: "src/app". */
+  /** Directory to scan for components, resolved relative to `cwd`. Every `.ts` file under it is
+   *  considered; the `@Component` decorator, not the filename, decides what is one. Default: "src/app". */
   targetDir?: string;
   /**
    * Routes file to parse for the `routes` array, resolved relative to `targetDir` — NOT to `cwd`

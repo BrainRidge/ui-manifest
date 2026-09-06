@@ -1,6 +1,6 @@
 {
   "name": "@ui-manifest-json/core",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Shared JSON schema types and framework-agnostic helpers for ui-manifest extractors.",
   "keywords": [
     "ui-manifest",

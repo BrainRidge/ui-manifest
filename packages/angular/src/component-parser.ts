@@ -265,19 +265,51 @@ export async function extractComponentsFromSource(
   return components;
 }
 
-/** Walk `config.targetDir` for every `*.component.ts` (excluding `.spec.ts`) and extract each
- *  `@Component`-decorated class into a `ComponentNode`. */
+/** A spec's `@Component` test host is a fixture, not part of the app. This was dead weight next to
+ *  the old `*.component.ts` filter — a path cannot end in both — and only becomes load-bearing now
+ *  that discovery is filename-agnostic. */
+const TEST_FILE_RE = /\.(test|spec)\.ts$/;
+
+/**
+ * Whether a file is worth opening in the search for components.
+ *
+ * Deliberately NOT `*.component.ts`. That is an Angular *style guide* suggestion, never a compiler
+ * rule, and v20's CLI stopped following it: `ng generate component book-list` now writes
+ * `book-list.ts` exporting `class BookList`. Filtering on the old convention matched nothing
+ * whatsoever on a v20-scaffolded app — and because the routes pass reads `app.routes.ts` by name and
+ * was unaffected, the result was a confident, fully-populated `routes` array beside an empty
+ * `components`, `routeTrees` and `dependencyGraph`. Silence, not a crash, under `coverage: "full"`.
+ *
+ * The decorator is the real filter: `extractComponentsFromSource` discards every class that has no
+ * `@Component`, so this predicate only decides which files get opened, never what counts as a
+ * component. Widening it cannot invent components; narrowing it can only lose them.
+ *
+ * This is also what the React extractor's `walkSourceFiles` has always done — take every source
+ * file, drop declarations and tests, let the detector decide.
+ */
+function couldHoldComponent(relativePath: string): boolean {
+  return relativePath.endsWith('.ts')
+    && !relativePath.endsWith('.d.ts')
+    && !TEST_FILE_RE.test(relativePath);
+}
+
+/** Walk `config.targetDir` for every file that could hold a component (see
+ *  {@link couldHoldComponent}) and extract each `@Component`-decorated class into a
+ *  `ComponentNode`. */
 export async function collectComponents(config: AngularExtractConfig): Promise<ComponentParseResult> {
-  const files = findFiles(
-    config.targetDir,
-    rel => rel.endsWith('.component.ts') && !rel.endsWith('.spec.ts'),
-  );
+  const files = findFiles(config.targetDir, couldHoldComponent);
   const diagnostics: string[] = [];
   const components: ComponentNode[] = [];
   const collapsedNodes = { count: 0 };
   for (const rel of files) {
     const absPath = resolve(config.targetDir, rel);
     const text = readFileSync(absPath, 'utf8');
+    // Cheap substring gate ahead of the AST. Discovery now opens every service, model and barrel
+    // file in the app, and `ts.createSourceFile` on all of them is the one real cost of that;
+    // a file whose text contains no `@Component` at all cannot yield one. Deliberately imprecise:
+    // a hit inside a comment or string buys a single parse that then returns nothing, which is
+    // exactly what the old filename filter would have done with the same file.
+    if (!text.includes('@Component')) continue;
     components.push(...(await extractComponentsFromSource(text, absPath, config, diagnostics, collapsedNodes)));
   }
   components.sort((a, b) => a.filePath.localeCompare(b.filePath));

@@ -1,6 +1,6 @@
 {
   "name": "@ui-manifest-json/angular",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Extract a diffable JSON manifest of routes, components and template trees from an Angular app's source.",
   "keywords": [
     "angular",
@@ -44,7 +44,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ui-manifest-json/core": "^0.3.0"
+    "@ui-manifest-json/core": "^0.3.1"
   },
   "peerDependencies": {
     "typescript": ">=4.8.0 <6.0.0",
