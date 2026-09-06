@@ -146,7 +146,7 @@ describe('collectComponents — file-system driven, external templateUrl', () =>
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('globs *.component.ts (excluding .spec.ts), reads external templateUrl files, and parses their DOM', async () => {
+  it('reads external templateUrl files and parses their DOM', async () => {
     writeFileSync(
       join(dir, 'widget.component.ts'),
       `
@@ -185,5 +185,92 @@ describe('collectComponents — file-system driven, external templateUrl', () =>
       },
     ]);
     expect(diagnostics).toEqual([]);
+  });
+});
+
+/**
+ * Regression coverage for #1.
+ *
+ * Discovery used to filter on `rel.endsWith('.component.ts')`. Angular v20's CLI stopped appending
+ * `.component` to generated filenames — `ng generate component book-list` writes `book-list.ts`
+ * exporting `class BookList` — so that filter matched nothing at all on a v20 app, and the extractor
+ * reported zero components without erroring. These tests pin the rule that replaced it: the
+ * `@Component` decorator decides, the filename does not.
+ */
+describe('collectComponents — discovery is by decorator, not filename', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'ui-manifest-angular-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const component = (selector: string, className: string) => `
+    import { Component } from '@angular/core';
+    @Component({ selector: '${selector}', template: '<p>x</p>' })
+    export class ${className} {}
+  `;
+
+  async function collectFrom(): Promise<string[]> {
+    const { components } = await collectComponents(fakeConfig({ targetDir: dir, cwd: dir }));
+    return components.map(c => c.className);
+  }
+
+  it('finds Angular 20 style components, whose files carry no .component suffix', async () => {
+    writeFileSync(join(dir, 'book-list.ts'), component('app-book-list', 'BookList'), 'utf8');
+    writeFileSync(join(dir, 'app.ts'), component('app-root', 'App'), 'utf8');
+
+    expect(await collectFrom()).toEqual(['App', 'BookList']);
+  });
+
+  it('finds both naming conventions side by side, as a part-migrated app has', async () => {
+    writeFileSync(join(dir, 'book-list.ts'), component('app-book-list', 'BookList'), 'utf8');
+    writeFileSync(join(dir, 'legacy.component.ts'), component('app-legacy', 'LegacyComponent'), 'utf8');
+
+    expect(await collectFrom()).toEqual(['BookList', 'LegacyComponent']);
+  });
+
+  it('ignores .ts files with no @Component, so widening the walk adds no false positives', async () => {
+    writeFileSync(join(dir, 'book-list.ts'), component('app-book-list', 'BookList'), 'utf8');
+    writeFileSync(
+      join(dir, 'book.service.ts'),
+      `import { Injectable } from '@angular/core';\n@Injectable()\nexport class BookService {}`,
+      'utf8',
+    );
+    writeFileSync(join(dir, 'auth-guard.ts'), `export class AuthGuard {}`, 'utf8');
+    writeFileSync(join(dir, 'book.ts'), `export interface Book { id: number }`, 'utf8');
+
+    expect(await collectFrom()).toEqual(['BookList']);
+  });
+
+  it('excludes test files, whose @Component hosts are fixtures rather than app code', async () => {
+    writeFileSync(join(dir, 'book-list.ts'), component('app-book-list', 'BookList'), 'utf8');
+    writeFileSync(join(dir, 'book-list.spec.ts'), component('app-spec-host', 'SpecHost'), 'utf8');
+    writeFileSync(join(dir, 'book-list.test.ts'), component('app-test-host', 'TestHost'), 'utf8');
+    // The pre-#1 filter excluded `.spec.ts` too, but only vacuously: a path cannot end in both
+    // `.spec.ts` and `.component.ts`. This is the first version where the exclusion does work.
+    writeFileSync(join(dir, 'legacy.component.spec.ts'), component('app-legacy-spec', 'LegacySpecHost'), 'utf8');
+
+    expect(await collectFrom()).toEqual(['BookList']);
+  });
+
+  it('excludes .d.ts declarations, which cannot carry a decorated class', async () => {
+    writeFileSync(join(dir, 'book-list.ts'), component('app-book-list', 'BookList'), 'utf8');
+    writeFileSync(join(dir, 'shims.d.ts'), `declare module '*.svg';\n// @Component`, 'utf8');
+
+    expect(await collectFrom()).toEqual(['BookList']);
+  });
+
+  it('finds several components declared in one file, as a single-file feature has', async () => {
+    writeFileSync(
+      join(dir, 'feature.ts'),
+      `${component('app-parent', 'Parent')}\n${component('app-child', 'Child')}`,
+      'utf8',
+    );
+
+    expect(await collectFrom()).toEqual(['Parent', 'Child']);
   });
 });

@@ -2,7 +2,7 @@
  * @ui-manifest-json/angular — extracts routes, components, and (optionally) template DOM /
  * dependency-graph trees from an Angular app's `src/app/` directory.
  *
- * Why source-derived extraction: this is a syntactic pass over each `*.component.ts` (via the
+ * Why source-derived extraction: this is a syntactic pass over each component source file (via the
  * `typescript` package's AST — no type-checker `Program`, no `tsc` project load) and over the
  * `Routes` array in `app.routes.ts`. It never runs the target app or its build; it never needs a
  * tsconfig, node_modules to be installed, or a compiling project. That makes it fast and safe to

@@ -1,6 +1,6 @@
 {
   "name": "@ui-manifest-json/cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "One `ui-manifest` command that dispatches to whichever ui-manifest extractor you have installed.",
   "keywords": [
     "ui-manifest",
@@ -35,11 +35,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ui-manifest-json/core": "^0.3.0"
+    "@ui-manifest-json/core": "^0.3.1"
   },
   "peerDependencies": {
-    "@ui-manifest-json/angular": "^0.3.0",
-    "@ui-manifest-json/react": "^0.3.0"
+    "@ui-manifest-json/angular": "^0.3.1",
+    "@ui-manifest-json/react": "^0.3.1"
   },
   "peerDependenciesMeta": {
     "@ui-manifest-json/angular": {
@@ -50,8 +50,8 @@
     }
   },
   "devDependencies": {
-    "@ui-manifest-json/angular": "^0.3.0",
-    "@ui-manifest-json/react": "^0.3.0",
+    "@ui-manifest-json/angular": "^0.3.1",
+    "@ui-manifest-json/react": "^0.3.1",
     "typescript": "^5.5.0"
   }
 }

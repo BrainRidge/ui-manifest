@@ -19,7 +19,7 @@ feed it to your own tooling) is entirely up to you.
 | Package | What it does |
 |---|---|
 | [`@ui-manifest-json/core`](packages/core) | The shared `UiManifest` JSON schema (as TypeScript types) and the framework-agnostic dependency-graph resolver both extractors build on. You won't usually install this directly — the extractors depend on it. |
-| [`@ui-manifest-json/angular`](packages/angular) | Extracts from an Angular app's `*.component.ts` files and `Routes` array. |
+| [`@ui-manifest-json/angular`](packages/angular) | Extracts from an Angular app's `@Component` classes and `Routes` array. |
 | [`@ui-manifest-json/react`](packages/react) | Extracts from a React app's function/class components and route configuration (`react-router-dom` JSX or object-config style). |
 | [`@ui-manifest-json/cli`](packages/cli) | One `ui-manifest` command that detects whichever extractor(s) you have installed. |
 

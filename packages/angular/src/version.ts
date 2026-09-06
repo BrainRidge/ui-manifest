@@ -7,4 +7,4 @@
  * this in step with `package.json`, and `version.test.ts` fails the build if it drifts.
  */
 export const PACKAGE_NAME = '@ui-manifest-json/angular';
-export const PACKAGE_VERSION = '0.3.0';
+export const PACKAGE_VERSION = '0.3.1';

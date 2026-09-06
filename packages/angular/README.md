@@ -17,7 +17,7 @@ Nothing leaves your environment. This reads your source and writes JSON.
 
 ## How it works
 
-A syntactic pass over each `*.component.ts` (via the `typescript` package's AST) and over your
+A syntactic pass over each component source file (via the `typescript` package's AST) and over your
 `Routes` array. **No type-checker `Program`, no `tsc` project load** — so it never needs a tsconfig,
 installed `node_modules`, or a compiling project, and runs fine against partially-broken code.
 The trade is that anything not visible syntactically is left out rather than guessed at.
