@@ -57,7 +57,7 @@ describe('extract', () => {
     expect(typeof manifest.generatedAt).toBe('string');
     expect(() => new Date(manifest.generatedAt).toISOString()).not.toThrow();
 
-    expect(manifest.routes).toEqual([
+    expect(manifest.routes).toMatchObject([
       { path: '', fullPath: '/', component: { module: './root/root.component', export: 'RootComponent' } },
     ]);
     expect(manifest.components.map(c => c.className).sort()).toEqual(['ChildComponent', 'RootComponent']);
@@ -75,13 +75,14 @@ describe('extract', () => {
     const tree = manifest.dependencyGraph![0];
     expect(tree.routePath).toBe('');
     expect(tree.rootComponent).toBe('RootComponent');
-    const div = tree.tree[0];
-    if (div.type !== 'element') throw new Error('expected element');
-    expect(div.children[0]).toMatchObject({
+    // The root template's bare `<div>` is collapsed by the semantic node policy, so the child
+    // component's boundary marker is spliced up to the top of the tree.
+    expect(tree.tree[0]).toMatchObject({
       type: 'component-boundary',
       tag: 'app-child',
       componentClassName: 'ChildComponent',
     });
+    expect(manifest.collapsedNodeCount).toBeGreaterThan(0);
   });
 
   it('rejects --dependency-graph without --with-dom', async () => {

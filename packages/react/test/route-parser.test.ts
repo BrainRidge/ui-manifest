@@ -80,7 +80,7 @@ describe('route-parser', () => {
       'router.tsx',
     );
     const result = parseRoutesInFile(sf, 'src/router.tsx');
-    expect(result.routes[0].guards).toEqual({ canDeactivate: ['withNavigationPrompt'] });
+    expect(result.routes[0].guards?.canDeactivate?.map(g => g.name)).toEqual(['withNavigationPrompt']);
   });
 
   it('detects usePrompt() calls inside a same-file route component as best-effort canDeactivate text', () => {
@@ -100,7 +100,7 @@ describe('route-parser', () => {
       'router.tsx',
     );
     const result = parseRoutesInFile(sf, 'src/router.tsx');
-    expect(result.routes[0].guards).toEqual({ canDeactivate: ['usePrompt'] });
+    expect(result.routes[0].guards?.canDeactivate?.map(g => g.name)).toEqual(['usePrompt']);
   });
 
   it('parses a <Routes>/<Route> JSX tree nested inside <BrowserRouter>, preserving index and catch-all routes', () => {

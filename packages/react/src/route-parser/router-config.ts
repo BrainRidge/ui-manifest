@@ -102,7 +102,12 @@ function objectLiteralToRouteNode(
   const node: RouteNode = { path: isIndex ? PATHLESS_ROUTE_PATH : (path ?? PATHLESS_ROUTE_PATH) };
   if (component) node.component = component;
   if (children) node.children = children;
-  if (canDeactivate) node.guards = { canDeactivate };
+  // React's nav-blocking hooks are named, not declared as guard objects the way Angular's are;
+  // there is no separate declaration site to point at, so the name is emitted without a pointer
+  // rather than with an invented one.
+  if (canDeactivate) {
+    node.guards = { canDeactivate: canDeactivate.map(name => ({ name, kind: 'function' as const })) };
+  }
   return node;
 }
 

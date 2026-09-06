@@ -1,6 +1,6 @@
 {
   "name": "@ui-manifest-json/react",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Extract a diffable JSON manifest of routes, components and JSX trees from a React app's source.",
   "keywords": [
     "react",
@@ -45,7 +45,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ui-manifest-json/core": "^0.2.0"
+    "@ui-manifest-json/core": "^0.3.0"
   },
   "peerDependencies": {
     "typescript": ">=4.8.0 <6.0.0"

@@ -1,7 +1,9 @@
 import ts from 'typescript';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
-import type { ComponentNode, RouteGuards, RouteNode } from '@ui-manifest-json/core';
+import type {
+  ComponentNode, RouteGuard, RouteGuards, RouteNode, SourcePointer,
+} from '@ui-manifest-json/core';
 import type { AngularExtractConfig } from './config.js';
 import { objectLiteralProps, parseSourceText, toRepoRelative } from './component-parser.js';
 
@@ -189,6 +191,18 @@ function findRoutesArray(sourceFile: ts.SourceFile): ts.ArrayLiteralExpression |
   return defaultExportArray ?? namedRoutesArray;
 }
 
+/** A 1-based line pointer into whichever file this route object is written in. */
+function pointerAt(node: ts.Node, sourceFile: ts.SourceFile, ctx: RouteParseContext, symbol?: string): SourcePointer {
+  const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
+  return {
+    path: toRepoRelative(ctx.currentFilePath, ctx.cwd),
+    ...(symbol ? { symbol } : {}),
+    startLine: start.line + 1,
+    endLine: end.line + 1,
+  };
+}
+
 function routeObjectToPlain(objLiteral: ts.ObjectLiteralExpression, sourceFile: ts.SourceFile, ctx: RouteParseContext): RouteNode {
   const props = objectLiteralProps(objLiteral);
 
@@ -213,11 +227,22 @@ function routeObjectToPlain(objLiteral: ts.ObjectLiteralExpression, sourceFile: 
   }
 
   const guards: RouteGuards = {};
-  for (const key of ['canActivate', 'canDeactivate'] as const) {
+  for (const key of ['canActivate', 'canActivateChild', 'canDeactivate', 'canMatch'] as const) {
     if (props.has(key)) {
       const val = props.get(key) as ts.Expression;
       if (ts.isArrayLiteralExpression(val)) {
-        guards[key] = val.elements.map(el => el.getText(sourceFile).replace(/\s+/g, ' ').trim());
+        guards[key] = val.elements.map((el): RouteGuard => {
+          const name = el.getText(sourceFile).replace(/\s+/g, ' ').trim();
+          // A guard reference in a route array is an identifier, not a declaration — the
+          // declaration is in another file this pass never opens. Point at the REFERENCE and say
+          // so by naming the symbol: "somewhere called authGuard, referenced here" is a usable
+          // answer, where a pointer invented for the declaration would be a wrong one.
+          return {
+            name,
+            kind: /^[A-Z]/.test(name) ? 'class' : 'function',
+            source: pointerAt(el, sourceFile, ctx, /^[A-Za-z_$][\w$]*$/.test(name) ? name : undefined),
+          };
+        });
       }
     }
   }
@@ -231,6 +256,8 @@ function routeObjectToPlain(objLiteral: ts.ObjectLiteralExpression, sourceFile: 
   } else if (props.has('loadChildren')) {
     route.children = resolveLoadChildren(props.get('loadChildren') as ts.Expression, sourceFile, ctx);
   }
+
+  route.source = pointerAt(objLiteral, sourceFile, ctx);
 
   return route;
 }

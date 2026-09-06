@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import type { DomNode, ElementNode, StructuralKind, TemplateBranch, TemplateNode } from '@ui-manifest-json/core';
+import type {
+  BoundExpr, DomNode, ElementNode, SourcePointer, StructuralKind, TemplateBranch, TemplateNode,
+} from '@ui-manifest-json/core';
+import { collapseDom, enrichDom } from '@ui-manifest-json/core';
 
 // `@angular/compiler` is an optional peer dependency: it must never be imported at module load
 // time, only lazily (and cached) the first time DOM parsing is actually requested (--with-dom).
@@ -25,8 +28,42 @@ type DeferredBlockAst = InstanceType<Compiler['TmplAstDeferredBlock']>;
 type TemplateAttrAst = TemplateAst['templateAttrs'][number];
 
 export type DomParseResult =
-  | { ok: true; dom: DomNode[]; diagnostics: string[] }
+  | { ok: true; dom: DomNode[]; diagnostics: string[]; collapsed: number }
   | { ok: false; error: string };
+
+/**
+ * Where a template's text actually lives, so a parsed node's position can be turned into a
+ * repo-relative file and line.
+ *
+ * `lineOffset` is what makes an INLINE template honest. `parseTemplate()` numbers lines from the
+ * start of the string it was handed, so an inline `template: \`...\`` starting at line 14 of a
+ * `.component.ts` reports its first element as line 0 — which points at the import block. The
+ * offset is the line the template literal opens on, and without it every pointer into an inline
+ * template is confidently wrong rather than merely absent.
+ */
+export interface TemplateOrigin {
+  /** Repo-relative path of the file the template text lives in — the `.html` for a `templateUrl`,
+   *  the `.component.ts` for an inline one. */
+  path: string;
+  /** 0-based line within `path` that the template text starts on. */
+  lineOffset: number;
+}
+
+interface Ctx {
+  ng: Compiler;
+  origin: TemplateOrigin;
+  diagnostics: string[];
+}
+
+/** Angular's spans are 0-based; editors, git and humans are 1-based. Convert once, here. */
+function pointerFor(ctx: Ctx, span: { start: { line: number }; end: { line: number } } | undefined): SourcePointer | undefined {
+  if (!span) return undefined;
+  return {
+    path: ctx.origin.path,
+    startLine: ctx.origin.lineOffset + span.start.line + 1,
+    endLine: ctx.origin.lineOffset + span.end.line + 1,
+  };
+}
 
 /** Resolve the raw template source text for a component: read the external file for
  *  `templateUrl` (relative to the component's own file, like Angular itself resolves it), or use
@@ -50,17 +87,28 @@ export function resolveTemplateSource(
 /** Parse one component's template source into the `DomNode[]` shape via a real Ivy
  *  `parseTemplate()` call. `urlForErrors` is only used for source-mapping inside compiler error
  *  messages — it is not stored in the output. */
-export async function parseComponentDom(templateSource: string, urlForErrors: string): Promise<DomParseResult> {
+export async function parseComponentDom(
+  templateSource: string,
+  urlForErrors: string,
+  origin: TemplateOrigin = { path: urlForErrors, lineOffset: 0 },
+): Promise<DomParseResult> {
   const ng = await loadCompiler();
   const parsed = ng.parseTemplate(templateSource, urlForErrors, { preserveWhitespaces: false });
   if (parsed.errors && parsed.errors.length) {
     return { ok: false, error: parsed.errors.map(e => e.msg).join('; ') };
   }
-  const diagnostics: string[] = [];
+  const ctx: Ctx = { ng, origin, diagnostics: [] };
   const dom = parsed.nodes
-    .map(node => nodeToPlain(node, ng, urlForErrors, diagnostics))
+    .map(node => nodeToPlain(node, ctx))
     .filter((n): n is DomNode => n !== null);
-  return { ok: true, dom, diagnostics };
+  // Collapse BEFORE enrichment, so text folding and uniqueness both measure the tree a consumer
+  // will actually read rather than the one the parser happened to produce.
+  const { dom: kept, collapsed } = collapseDom(dom);
+  // Enrichment runs over the WHOLE template at once, not per node, because two of its rules are
+  // whole-template properties: a candidate's uniqueness is only meaningful against every other
+  // element in the file, and an element's condition chain is a property of its ancestors.
+  enrichDom(kept);
+  return { ok: true, dom: kept, diagnostics: ctx.diagnostics, collapsed };
 }
 
 // Only `ASTWithSource` instances carry `.source`; the various AST-typed fields on template nodes
@@ -79,52 +127,78 @@ function isNotNull<T>(value: T | null): value is T {
   return value !== null;
 }
 
-function nodeToPlain(node: TmplAstNode, ng: Compiler, filePath: string, diagnostics: string[]): DomNode | null {
-  if (node instanceof ng.TmplAstText) {
+function nodeToPlain(node: TmplAstNode, ctx: Ctx): DomNode | null {
+  if (node instanceof ctx.ng.TmplAstText) {
     const text = node.value.trim();
     return text ? { type: 'text', extraction: 'compiler', value: text } : null;
   }
-  if (node instanceof ng.TmplAstBoundText) {
+  if (node instanceof ctx.ng.TmplAstBoundText) {
     return { type: 'interpolation', extraction: 'compiler', interpolation: exprSource(node.value) };
   }
-  if (node instanceof ng.TmplAstElement) {
-    return elementToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstElement) {
+    return elementToPlain(node, ctx);
   }
-  if (node instanceof ng.TmplAstTemplate) {
-    return templateToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstTemplate) {
+    return templateToPlain(node, ctx);
   }
-  if (node instanceof ng.TmplAstContent) {
-    return contentToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstContent) {
+    return contentToPlain(node, ctx);
   }
-  if (node instanceof ng.TmplAstIfBlock) {
-    return ifBlockToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstIfBlock) {
+    return ifBlockToPlain(node, ctx);
   }
-  if (node instanceof ng.TmplAstForLoopBlock) {
-    return forLoopToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstForLoopBlock) {
+    return forLoopToPlain(node, ctx);
   }
-  if (node instanceof ng.TmplAstSwitchBlock) {
-    return switchToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstSwitchBlock) {
+    return switchToPlain(node, ctx);
   }
-  if (node instanceof ng.TmplAstDeferredBlock) {
-    return deferToPlain(node, ng, filePath, diagnostics);
+  if (node instanceof ctx.ng.TmplAstDeferredBlock) {
+    return deferToPlain(node, ctx);
   }
   // Everything else (Comment, Icu, UnknownBlock, `@let` LetDeclaration, ...) has no DomNode
   // variant that fits without distorting the fixed core schema — skip it and say so, rather than
   // silently dropping information or inventing a mismatched shape.
-  diagnostics.push(`unsupported template node kind "${node.constructor.name}" skipped in ${filePath}`);
+  ctx.diagnostics.push(`unsupported template node kind "${node.constructor.name}" skipped in ${ctx.origin.path}`);
   return null;
 }
 
-function childrenToPlain(nodes: TmplAstNode[], ng: Compiler, filePath: string, diagnostics: string[]): DomNode[] {
-  return nodes.map(child => nodeToPlain(child, ng, filePath, diagnostics)).filter(isNotNull);
+function childrenToPlain(nodes: TmplAstNode[], ctx: Ctx): DomNode[] {
+  return nodes.map(child => nodeToPlain(child, ctx)).filter(isNotNull);
 }
 
-function elementToPlain(node: ElementAst, ng: Compiler, filePath: string, diagnostics: string[]): ElementNode {
+/**
+ * Split a `[(banana)]` binding back into the two halves Angular desugars it into.
+ *
+ * `[(ngModel)]="x"` produces an input named `ngModel` AND an output named `ngModelChange`, and in
+ * v2 the second was indistinguishable from a hand-written `(ngModelChange)` handler — so anything
+ * counting interactions counted every two-way-bound field twice. Detected structurally (an output
+ * named `<input>Change` for an input that exists) rather than off `ParsedEventType`, because that
+ * enum is internal to the compiler and this package supports five major versions of it.
+ */
+function eventKind(inputNames: Set<string>, outputName: string): 'output' | 'twoWayWriteback' {
+  const base = outputName.endsWith('Change') ? outputName.slice(0, -'Change'.length) : '';
+  return base && inputNames.has(base) ? 'twoWayWriteback' : 'output';
+}
+
+function elementToPlain(node: ElementAst, ctx: Ctx): ElementNode {
   const attrs: Record<string, string> = {};
   for (const a of node.attributes) attrs[a.name] = a.value;
-  const props = node.inputs.map(i => ({ name: i.keySpan?.toString() ?? i.name, expr: exprSource(i.value) }));
-  const events = node.outputs.map(o => ({ name: o.keySpan?.toString() ?? o.name, expr: exprSource(o.handler) }));
+  const inputNames = new Set(node.inputs.map(i => i.name));
+  const twoWay = new Set(node.outputs.map(o => o.name).filter(n => n.endsWith('Change'))
+    .map(n => n.slice(0, -'Change'.length)).filter(n => inputNames.has(n)));
+  const props: BoundExpr[] = node.inputs.map(i => ({
+    name: i.keySpan?.toString() ?? i.name,
+    expr: exprSource(i.value),
+    ...(twoWay.has(i.name) ? { kind: 'twoWay' as const } : {}),
+  }));
+  const events: BoundExpr[] = node.outputs.map(o => ({
+    name: o.keySpan?.toString() ?? o.name,
+    expr: exprSource(o.handler),
+    kind: eventKind(inputNames, o.name),
+  }));
   const refs = node.references.map(r => r.name);
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'element',
     extraction: 'compiler',
@@ -133,11 +207,12 @@ function elementToPlain(node: ElementAst, ng: Compiler, filePath: string, diagno
     props,
     events,
     ...(refs.length ? { refs } : {}),
-    children: childrenToPlain(node.children, ng, filePath, diagnostics),
+    children: childrenToPlain(node.children, ctx),
+    ...(source ? { source } : {}),
   };
 }
 
-function contentToPlain(node: ContentAst, ng: Compiler, filePath: string, diagnostics: string[]): ElementNode {
+function contentToPlain(node: ContentAst, ctx: Ctx): ElementNode {
   const attrs: Record<string, string> = {};
   if (node.selector && node.selector !== '*') attrs.select = node.selector;
   // `TmplAstContent` gained `children` after Angular 17: back then `<ng-content>` was
@@ -147,6 +222,7 @@ function contentToPlain(node: ContentAst, ng: Compiler, filePath: string, diagno
   // found the same way: installing the packed tarball against each version in the declared peer
   // range. Empty is not a fallback here, it is what the old shape MEANS.
   const children = (node as { children?: unknown[] }).children ?? [];
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'element',
     extraction: 'compiler',
@@ -154,7 +230,8 @@ function contentToPlain(node: ContentAst, ng: Compiler, filePath: string, diagno
     attrs,
     props: [],
     events: [],
-    children: childrenToPlain(children as Parameters<typeof childrenToPlain>[0], ng, filePath, diagnostics),
+    children: childrenToPlain(children as Parameters<typeof childrenToPlain>[0], ctx),
+    ...(source ? { source } : {}),
   };
 }
 
@@ -183,24 +260,27 @@ function legacyStructuralKind(templateAttrs: TemplateAttrAst[]): { kind: Structu
   return { kind: '*ngIf', condition: condition || undefined };
 }
 
-function templateToPlain(node: TemplateAst, ng: Compiler, filePath: string, diagnostics: string[]): TemplateNode {
+function templateToPlain(node: TemplateAst, ctx: Ctx): TemplateNode {
   const { kind, condition } = legacyStructuralKind(node.templateAttrs);
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'template',
     extraction: 'compiler',
     structural: kind,
     ...(condition !== undefined ? { condition } : {}),
-    children: childrenToPlain(node.children, ng, filePath, diagnostics),
+    children: childrenToPlain(node.children, ctx),
+    ...(source ? { source } : {}),
   };
 }
 
-function ifBlockToPlain(node: IfBlockAst, ng: Compiler, filePath: string, diagnostics: string[]): TemplateNode {
+function ifBlockToPlain(node: IfBlockAst, ctx: Ctx): TemplateNode {
   const branches: TemplateBranch[] = node.branches.map((b, i) => ({
     label: b.expression ? (i === 0 ? 'if' : 'else if') : 'else',
     ...(b.expression ? { condition: exprSource(b.expression) } : {}),
-    children: childrenToPlain(b.children, ng, filePath, diagnostics),
+    children: childrenToPlain(b.children, ctx),
   }));
   const primary = branches[0] as TemplateBranch | undefined;
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'template',
     extraction: 'compiler',
@@ -208,23 +288,26 @@ function ifBlockToPlain(node: IfBlockAst, ng: Compiler, filePath: string, diagno
     ...(primary?.condition !== undefined ? { condition: primary.condition } : {}),
     branches,
     children: primary?.children ?? [],
+    ...(source ? { source } : {}),
   };
 }
 
-function forLoopToPlain(node: ForLoopBlockAst, ng: Compiler, filePath: string, diagnostics: string[]): TemplateNode {
+function forLoopToPlain(node: ForLoopBlockAst, ctx: Ctx): TemplateNode {
   const of = exprSource(node.expression);
   const trackBy = node.trackBy ? exprSource(node.trackBy) : undefined;
   const condition = `${node.item.name} of ${of}${trackBy ? `; track ${trackBy}` : ''}`;
   const branches: TemplateBranch[] | undefined = node.empty
-    ? [{ label: 'empty', children: childrenToPlain(node.empty.children, ng, filePath, diagnostics) }]
+    ? [{ label: 'empty', children: childrenToPlain(node.empty.children, ctx) }]
     : undefined;
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'template',
     extraction: 'compiler',
     structural: '@for',
     condition,
     ...(branches ? { branches } : {}),
-    children: childrenToPlain(node.children, ng, filePath, diagnostics),
+    children: childrenToPlain(node.children, ctx),
+    ...(source ? { source } : {}),
   };
 }
 
@@ -263,7 +346,7 @@ export function switchGroups(node: SwitchBlockAst): SwitchGroup[] {
   return (legacy.cases ?? []).map(c => ({ cases: [c], children: c.children }));
 }
 
-function switchToPlain(node: SwitchBlockAst, ng: Compiler, filePath: string, diagnostics: string[]): TemplateNode {
+function switchToPlain(node: SwitchBlockAst, ctx: Ctx): TemplateNode {
   const branches: TemplateBranch[] = switchGroups(node).map(g => {
     const isDefault = g.cases.length === 0 || g.cases.every(c => c.expression === null);
     const label = isDefault
@@ -272,9 +355,10 @@ function switchToPlain(node: SwitchBlockAst, ng: Compiler, filePath: string, dia
     return {
       label,
       ...(isDefault ? {} : { condition: label }),
-      children: childrenToPlain(g.children as Parameters<typeof childrenToPlain>[0], ng, filePath, diagnostics),
+      children: childrenToPlain(g.children as Parameters<typeof childrenToPlain>[0], ctx),
     };
   });
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'template',
     extraction: 'compiler',
@@ -282,27 +366,30 @@ function switchToPlain(node: SwitchBlockAst, ng: Compiler, filePath: string, dia
     condition: exprSource(node.expression),
     branches,
     children: (branches[0] as TemplateBranch | undefined)?.children ?? [],
+    ...(source ? { source } : {}),
   };
 }
 
-function deferToPlain(node: DeferredBlockAst, ng: Compiler, filePath: string, diagnostics: string[]): TemplateNode {
+function deferToPlain(node: DeferredBlockAst, ctx: Ctx): TemplateNode {
   const triggers = Object.keys(node.triggers ?? {});
   const branches: TemplateBranch[] = [];
   if (node.placeholder) {
-    branches.push({ label: 'placeholder', children: childrenToPlain(node.placeholder.children, ng, filePath, diagnostics) });
+    branches.push({ label: 'placeholder', children: childrenToPlain(node.placeholder.children, ctx) });
   }
   if (node.loading) {
-    branches.push({ label: 'loading', children: childrenToPlain(node.loading.children, ng, filePath, diagnostics) });
+    branches.push({ label: 'loading', children: childrenToPlain(node.loading.children, ctx) });
   }
   if (node.error) {
-    branches.push({ label: 'error', children: childrenToPlain(node.error.children, ng, filePath, diagnostics) });
+    branches.push({ label: 'error', children: childrenToPlain(node.error.children, ctx) });
   }
+  const source = pointerFor(ctx, node.sourceSpan);
   return {
     type: 'template',
     extraction: 'compiler',
     structural: '@defer',
     ...(triggers.length ? { condition: triggers.join(', ') } : {}),
     ...(branches.length ? { branches } : {}),
-    children: childrenToPlain(node.children, ng, filePath, diagnostics),
+    children: childrenToPlain(node.children, ctx),
+    ...(source ? { source } : {}),
   };
 }

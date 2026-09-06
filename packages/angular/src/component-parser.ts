@@ -1,14 +1,18 @@
 import ts from 'typescript';
 import { readFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
-import type { ComponentNode, PropertyBinding } from '@ui-manifest-json/core';
+import { dirname, relative, resolve } from 'node:path';
+import type { ComponentNode, PropertyBinding, SourcePointer } from '@ui-manifest-json/core';
 import type { AngularExtractConfig } from './config.js';
 import { findFiles } from './find-files.js';
 import { parseComponentDom, resolveTemplateSource } from './dom-parser.js';
+import type { TemplateOrigin } from './dom-parser.js';
 
 export interface ComponentParseResult {
   components: ComponentNode[];
   diagnostics: string[];
+  /** How many presentational nodes the semantic policy removed, so a consumer can tell that the
+   *  tree it is reading is not the DOM. */
+  collapsedNodeCount: number;
 }
 
 export function parseSourceText(text: string, fileName: string): ts.SourceFile {
@@ -62,6 +66,7 @@ async function extractComponent(
   absPath: string,
   config: AngularExtractConfig,
   diagnostics: string[],
+  collapsedNodes: { count: number } = { count: 0 },
 ): Promise<ComponentNode | null> {
   const decorator = findClassDecorator(classNode, 'Component');
   if (!decorator || !ts.isCallExpression(decorator.expression)) return null;
@@ -171,8 +176,18 @@ async function extractComponent(
   inputs.sort((a, b) => a.name.localeCompare(b.name));
   outputs.sort((a, b) => a.name.localeCompare(b.name));
 
+  const filePath = toRepoRelative(absPath, config.cwd);
+  const classStart = sourceFile.getLineAndCharacterOfPosition(classNode.getStart(sourceFile));
+  const classEnd = sourceFile.getLineAndCharacterOfPosition(classNode.getEnd());
+
   const result: ComponentNode = {
-    filePath: toRepoRelative(absPath, config.cwd),
+    filePath,
+    source: {
+      path: filePath,
+      ...(classNode.name?.text ? { symbol: classNode.name.text } : {}),
+      startLine: classStart.line + 1,
+      endLine: classEnd.line + 1,
+    },
     className: classNode.name?.text ?? '(anonymous)',
     ...(selector ? { selector } : {}),
     standalone,
@@ -188,9 +203,33 @@ async function extractComponent(
     const templateSource = resolveTemplateSource(templateUrl, inlineTemplateText, absPath);
     if (templateSource != null) {
       const urlForErrors = templateUrl ?? result.filePath;
-      const parsed = await parseComponentDom(templateSource, urlForErrors);
+      // An element's pointer must name the file its TEXT is in, which for a `templateUrl` is a
+      // different file from the component's. And an inline template's lines are numbered from the
+      // start of the literal, not the start of the `.ts` — so without this offset every pointer
+      // into an inline template lands in the import block, confidently.
+      const origin: TemplateOrigin = templateUrl
+        ? { path: toRepoRelative(resolve(dirname(absPath), templateUrl), config.cwd), lineOffset: 0 }
+        : {
+            path: filePath,
+            lineOffset: templateNode
+              ? sourceFile.getLineAndCharacterOfPosition(templateNode.getStart(sourceFile)).line
+              : 0,
+          };
+      const templateEnd = templateNode
+        ? sourceFile.getLineAndCharacterOfPosition(templateNode.getEnd()).line + 1
+        : undefined;
+      result.template = {
+        source: {
+          path: origin.path,
+          startLine: origin.lineOffset + 1,
+          ...(templateUrl ? {} : { endLine: templateEnd }),
+        },
+        inline: !templateUrl,
+      };
+      const parsed = await parseComponentDom(templateSource, urlForErrors, origin);
       if (parsed.ok) {
         result.dom = parsed.dom;
+        collapsedNodes.count += parsed.collapsed;
         diagnostics.push(...parsed.diagnostics);
       } else {
         diagnostics.push(`template parse error in ${result.filePath}: ${parsed.error}`);
@@ -211,6 +250,7 @@ export async function extractComponentsFromSource(
   absPath: string,
   config: AngularExtractConfig,
   diagnostics: string[],
+  collapsedNodes: { count: number } = { count: 0 },
 ): Promise<ComponentNode[]> {
   const sourceFile = parseSourceText(sourceText, absPath);
   const classNodes: ts.ClassDeclaration[] = [];
@@ -219,7 +259,7 @@ export async function extractComponentsFromSource(
   });
   const components: ComponentNode[] = [];
   for (const classNode of classNodes) {
-    const component = await extractComponent(classNode, sourceFile, absPath, config, diagnostics);
+    const component = await extractComponent(classNode, sourceFile, absPath, config, diagnostics, collapsedNodes);
     if (component) components.push(component);
   }
   return components;
@@ -234,11 +274,12 @@ export async function collectComponents(config: AngularExtractConfig): Promise<C
   );
   const diagnostics: string[] = [];
   const components: ComponentNode[] = [];
+  const collapsedNodes = { count: 0 };
   for (const rel of files) {
     const absPath = resolve(config.targetDir, rel);
     const text = readFileSync(absPath, 'utf8');
-    components.push(...(await extractComponentsFromSource(text, absPath, config, diagnostics)));
+    components.push(...(await extractComponentsFromSource(text, absPath, config, diagnostics, collapsedNodes)));
   }
   components.sort((a, b) => a.filePath.localeCompare(b.filePath));
-  return { components, diagnostics };
+  return { components, diagnostics, collapsedNodeCount: collapsedNodes.count };
 }

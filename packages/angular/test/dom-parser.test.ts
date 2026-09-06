@@ -10,7 +10,7 @@ async function domOf(template: string) {
 describe('parseComponentDom', () => {
   it('parses a legacy *ngIf structural directive as a template node wrapping the element', async () => {
     const dom = await domOf(`<div *ngIf="visible">Hello</div>`);
-    expect(dom).toEqual([
+    expect(dom).toMatchObject([
       {
         type: 'template',
         extraction: 'compiler',
@@ -39,7 +39,7 @@ describe('parseComponentDom', () => {
 
   it('parses @if/@else as a template node with per-branch conditions, primary branch mirrored into children', async () => {
     const dom = await domOf(`@if (visible) {<span>Yes</span>} @else {<span>No</span>}`);
-    expect(dom).toEqual([
+    expect(dom).toMatchObject([
       {
         type: 'template',
         extraction: 'compiler',
@@ -134,7 +134,7 @@ describe('parseComponentDom', () => {
 
   it('maps <ng-content select="..."> to an element node with a select attr', async () => {
     const dom = await domOf(`<ng-content select="[foo]"></ng-content>`);
-    expect(dom).toEqual([
+    expect(dom).toMatchObject([
       { type: 'element', extraction: 'compiler', el: 'ng-content', attrs: { select: '[foo]' }, props: [], events: [], children: [] },
     ]);
   });
@@ -218,10 +218,10 @@ describe('<ng-content> across Angular compiler versions', () => {
    * hoisted 22.x devDependency.
    */
   it('parses <ng-content> with whatever compiler is installed', async () => {
+    // The bare `<div>` around it is a presentational wrapper and is collapsed away by the
+    // semantic node policy, so the ng-content is spliced up into its place.
     const dom = await domOf(`<div><ng-content select="[header]"></ng-content></div>`);
-    const wrapper = dom[0];
-    if (wrapper?.type !== 'element') throw new Error('expected an element');
-    const content = wrapper.children[0];
+    const content = dom[0];
     if (content?.type !== 'element') throw new Error('expected an ng-content element');
     expect(content.el).toBe('ng-content');
     expect(content.attrs).toEqual({ select: '[header]' });

@@ -1,4 +1,5 @@
 import type { DomNode } from './dom.js';
+import type { SourcePointer } from './source.js';
 
 export type PropertyBindingKind = 'decorator' | 'signal';
 
@@ -26,6 +27,12 @@ export interface ComponentNode {
   className: string;
   /** Repo-relative path to the file the component is defined in. */
   filePath: string;
+  /** The class declaration, with lines. `filePath` says which file; this says where in it. */
+  source?: SourcePointer;
+  /** The TEMPLATE, which for an external `templateUrl` is a different file entirely — and is
+   *  where every element's own pointer lands. Without this a consumer reading a component's
+   *  location gets the `.ts`, and every element in it points somewhere else. */
+  template?: { source: SourcePointer; inline: boolean };
   /** Angular only. */
   selector?: string;
   /** Angular only. */

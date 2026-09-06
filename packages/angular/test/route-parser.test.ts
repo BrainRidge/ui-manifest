@@ -34,7 +34,12 @@ describe('collectRoutesFromSource', () => {
   it('extracts canActivate/canDeactivate guard arrays', () => {
     const { routes } = collectRoutesFromSource(src, '/fake/app.routes.ts');
     const admin = routes.find(r => r.path === 'admin');
-    expect(admin?.guards).toEqual({ canActivate: ['authGuard'], canDeactivate: ['authGuard'] });
+    // A guard is an object now, not a name: a name cannot be opened, and "what gates this
+    // route?" is only answerable to the point of usefulness with a file and a line.
+    expect(admin?.guards?.canActivate).toEqual([
+      { name: 'authGuard', kind: 'function', source: expect.objectContaining({ symbol: 'authGuard' }) },
+    ]);
+    expect(admin?.guards?.canDeactivate?.map(g => g.name)).toEqual(['authGuard']);
 
     const home = routes.find(r => r.path === 'home');
     expect(home?.guards).toBeUndefined();
@@ -42,13 +47,14 @@ describe('collectRoutesFromSource', () => {
 
   it('extracts redirectTo/pathMatch on a plain redirect route', () => {
     const { routes } = collectRoutesFromSource(src, '/fake/app.routes.ts');
-    expect(routes[0]).toEqual({ path: '', redirectTo: 'home', pathMatch: 'full' });
+    expect(routes[0]).toMatchObject({ path: '', redirectTo: 'home', pathMatch: 'full' });
+    expect(routes[0]?.source?.startLine).toBeGreaterThan(0);
   });
 
   it('recurses into children', () => {
     const { routes } = collectRoutesFromSource(src, '/fake/app.routes.ts');
     const admin = routes.find(r => r.path === 'admin');
-    expect(admin?.children).toEqual([
+    expect(admin?.children).toMatchObject([
       { path: 'users', component: { module: './admin/users.component', export: 'UsersComponent' } },
     ]);
   });

@@ -1,6 +1,23 @@
+import type { SourcePointer } from './source.js';
+
+/**
+ * One guard on a route.
+ *
+ * v2 emitted a bare name. A name cannot be opened, so "what gates this route?" was answerable
+ * only as far as "something called authGuard" — and the follow-up, which is the one that matters
+ * when a test cannot reach a screen, needed a repository search to answer.
+ */
+export interface RouteGuard {
+  name: string;
+  kind: 'function' | 'class';
+  source?: SourcePointer;
+}
+
 export interface RouteGuards {
-  canActivate?: string[];
-  canDeactivate?: string[];
+  canActivate?: RouteGuard[];
+  canActivateChild?: RouteGuard[];
+  canDeactivate?: RouteGuard[];
+  canMatch?: RouteGuard[];
 }
 
 export type ReactRoutingPattern = 'jsx-routes' | 'router-config' | 'file-based';
@@ -25,10 +42,20 @@ export interface RouteNode {
   component?: {
     module: string;
     export: string;
+    source?: SourcePointer;
+  };
+  loadComponent?: {
+    module: string;
+    export: string;
+    source?: SourcePointer;
   };
   redirectTo?: string;
   pathMatch?: string;
   guards?: RouteGuards;
+  /** Query parameters this route reads. */
+  queryParamKeys?: string[];
+  /** Where the route object literal is written. */
+  source?: SourcePointer;
   children?: RouteNode[];
   /** React only, set at the tree root: which detection strategy produced this tree. */
   routingPattern?: ReactRoutingPattern;

@@ -108,7 +108,7 @@ describe('extractComponentsFromSource — template detection', () => {
 
     expect(component.inlineTemplate).toBe(true);
     expect(component.templateUrl).toBeUndefined();
-    expect(component.dom).toEqual([
+    expect(component.dom).toMatchObject([
       {
         type: 'element',
         extraction: 'compiler',
@@ -173,7 +173,7 @@ describe('collectComponents — file-system driven, external templateUrl', () =>
     expect(components).toHaveLength(1);
     expect(components[0].className).toBe('WidgetComponent');
     expect(components[0].filePath).toBe('widget.component.ts');
-    expect(components[0].dom).toEqual([
+    expect(components[0].dom).toMatchObject([
       {
         type: 'element',
         extraction: 'compiler',

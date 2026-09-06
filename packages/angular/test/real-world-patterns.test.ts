@@ -47,7 +47,7 @@ describe('real-world Angular Router patterns', () => {
     );
 
     const manifest = await extract({ cwd: dir });
-    expect(manifest.routes).toEqual([
+    expect(manifest.routes).toMatchObject([
       { path: '', fullPath: '/', component: { module: './home/home.component', export: 'HomeComponent' } },
     ]);
     expect(manifest.diagnostics ?? []).toEqual([]);
@@ -76,7 +76,7 @@ describe('real-world Angular Router patterns', () => {
     );
 
     const manifest = await extract({ cwd: dir });
-    expect(manifest.routes).toEqual([
+    expect(manifest.routes).toMatchObject([
       { path: 'settings', fullPath: '/settings', component: { module: 'src/app/settings/settings.component.ts', export: 'SettingsComponent' } },
     ]);
   });
@@ -106,7 +106,7 @@ describe('real-world Angular Router patterns', () => {
     writeFileSync(join(dir, 'src/app/profile/profile.component.ts'), `export class ProfileComponent {}`, 'utf8');
 
     const manifest = await extract({ cwd: dir });
-    expect(manifest.routes).toEqual([
+    expect(manifest.routes).toMatchObject([
       {
         path: 'profile',
         fullPath: '/profile',
