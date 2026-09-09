@@ -149,6 +149,14 @@ interface RouteNode {
 }
 ```
 
+`routingPattern: "jsx-routes"` covers every JSX-declared route table — v6/v7's `<Routes>` and
+v3/v4/v5's `<Switch>` alike. It says the routes were declared as JSX elements rather than as a
+config object array (`"router-config"`); it does not encode which React Router major version the
+app is on.
+
+For React, `pathMatch: "full"` is emitted for a v4/v5 `<Route exact>`, which means the same thing
+Angular's does. Its absence means prefix matching, the default in both frameworks.
+
 For React, `guards.canDeactivate` is a best-effort text capture of a nav-blocking hook/HOC name
 (`usePrompt`, `useBlocker`, `withNavigationPrompt`) — unlike Angular's guard names, it is **not** a
 resolved guard function reference. Treat it as a hint, not a guarantee.

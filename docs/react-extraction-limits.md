@@ -21,8 +21,23 @@ This is why every node in a `DomNode` tree carries `extraction: "compiler" | "he
   completely; capturing an expression's raw source text exactly isn't a guess even when we don't
   evaluate what it means.
 - Component detection itself (function components with a JSX-returning body, class components with
-  a JSX-returning `render()`, one or two levels of `forwardRef`/`memo` unwrapping).
+  a JSX-returning `render()`, one or two levels of `forwardRef`/`memo` unwrapping). File extension
+  is not part of it: `.js`, `.jsx` and `.tsx` all parse JSX identically, so a Babel-compiled app
+  that writes every component in a plain `.js` file is read the same as a TypeScript one. Only
+  `.ts` is excluded, because JSX cannot appear there (`<T>x` is a type assertion).
+- Which export is a module's *default*, including through an HOC call chain —
+  `export default connect(mapState)(Page)`, `withRouter(Page)`, `compose(a, b)(Page)`. Resolved
+  only when the exported expression references exactly one component declared in that file;
+  ambiguity is left unresolved rather than guessed. This is what makes
+  `import Page from './Page'` resolve in the dependency graph.
 - Prop extraction from a TS type annotation or `propTypes`.
+
+**A class component extending another component class is NOT detected** — `class Favorites extends
+Profile`, overriding one render helper and inheriting `render()`. Detection requires a base of
+`Component`/`PureComponent`, and resolving an arbitrary base class across files needs a type
+checker this pass deliberately does not load. Such a component is absent from `components[]`, and a
+route pointing at it reports `dependency graph: no component found for route …` rather than failing
+silently.
 
 ## `extraction: "heuristic"` — best-effort pattern matching, three shapes only
 
@@ -47,16 +62,60 @@ gaps in that area specifically.
 
 ## Routing: two patterns detected, one explicitly not
 
-`react-router-dom` v6/v7 apps are detected via **static source analysis**, not `package.json`
-inspection (the two patterns below are structurally indistinguishable from a dependency list
-alone):
+`react-router-dom` apps are detected via **static source analysis**, not `package.json` inspection
+(the two patterns below are structurally indistinguishable from a dependency list alone):
 
 - **`router-config`**: `createBrowserRouter`/`createHashRouter`/`createMemoryRouter([...])` with an
-  array-literal argument.
-- **`jsx-routes`**: a `<Routes>`/`<Route>` JSX tree.
+  array-literal argument (v6.4+/v7).
+- **`jsx-routes`**: a JSX route table — `<Routes>` on v6/v7, `<Switch>` on v3/v4/v5, or bare
+  `<Route>`s with no container at all (also legal on v3/v4/v5).
 
-A file that imports `react-router-dom` but matches neither pattern produces a `diagnostics` entry
-naming the file, not a silent empty route list — see `docs/schema.md`'s "Diagnostics" section.
+Both major eras of the JSX form are read, including how each names a route's target:
+
+| written as | versions | read |
+| --- | --- | --- |
+| `element={<X/>}` | v6/v7 | yes |
+| `component={X}` | v3/v4/v5 | yes |
+| `render={() => <X/>}` | v4/v5 | yes, via the last JSX the render prop returns |
+| `<Route path="/x"><X/></Route>` | v5 | yes, when the body has exactly one element child |
+| `<Redirect from="/a" to="/b"/>` | v3/v4/v5 | yes, as `redirectTo` |
+| `children={({match}) => <X/>}` | v4/v5 | **no** — use `render` |
+
+`exact` (v4/v5) is reported as `pathMatch: "full"`, which is the same thing Angular's `pathMatch`
+means. Its absence is prefix matching, the default in both frameworks, and is left unstated rather
+than spelled out.
+
+`routingPattern` stays `"jsx-routes"` for a `<Switch>` table: the value distinguishes "routes
+declared as JSX elements" from "routes declared as a config object array", and that distinction is
+the same in v4/v5 and v6/v7. The router version is a property of the app's dependencies, not of the
+detection strategy.
+
+### What routing does NOT capture
+
+- **A custom route wrapper's gating effect.** An element carrying a `path` attribute inside a route
+  table is read as a route whatever its tag (`<UserOnlyRoute exact path="/settings">`,
+  `<TokenCheckRoute path="/verify">`) — `<Switch>` reads `path` off the child itself, so this is
+  structural, not a naming guess. But the wrapper's *effect* is not modelled: the route and its
+  component are reported, and that reaching it may require a login is **not**. No `guards` entry is
+  invented from an arbitrary tag name. Read a route as "this screen exists at this path", never as
+  "anyone can reach this path".
+- **A route table built by `.map()`.** `<Switch>{routes.map(r => <Route path={r.path} .../>)}</Switch>`
+  is not unrolled — `path` is an expression, not a literal, so there is nothing static to report.
+  Conditionally rendered entries (`{isAdmin && <Route .../>}`, and both ternary arms) *are* read.
+- **How separate route tables compose.** On v4/v5 a parent route's component renders its own
+  `<Switch>` in another file, so a manifest of such an app has several top-level route trees rather
+  than one nested tree, and two routes can share a `fullPath` (`/` mounting a shell whose own table
+  also has a `/`). Only tables nested in the same JSX (`<Route path="/app"><Switch>...</Switch></Route>`)
+  become `children`.
+- **`<Navigate to>` as a v6 route element** is reported as a component named `Navigate`, not as
+  `redirectTo`. Its v4/v5 counterpart `<Redirect>` *is* read as a redirect.
+
+A file that imports a route-**defining** name (`Route`, `Routes`, `Switch`, `createBrowserRouter`,
+`createHashRouter`, `createMemoryRouter`, `createRoutesFromElements`) but matches neither pattern
+produces a `diagnostics` entry naming the file, not a silent empty route list — see
+`docs/schema.md`'s "Diagnostics" section. A file that imports react-router only to *navigate*
+(`Link`, `NavLink`, `withRouter`, `useNavigate`, `Redirect` used as render logic) defines no route
+table, so it contributes neither routes nor a diagnostic.
 
 **Nav-blocking detection (`guards.canDeactivate`) only looks within the same file as the router
 setup.** `usePrompt`/`useBlocker`/`withNavigationPrompt` usage on a route component that's merely
@@ -82,3 +141,10 @@ Next.js app's routes will not appear in the output at all via this path.
 None of these limitations are silent: an unresolved tag is simply left as a plain `ElementNode`
 (not spliced into a `ComponentBoundaryNode`) rather than causing an error, and the component itself
 still appears correctly in `components[]` either way.
+
+A route whose own component cannot be resolved is a bigger loss — its whole tree is missing from
+`dependencyGraph` — so it records `dependency graph: no component found for route "<path>" (export
+"<X>" from "<module>")`, the same wording the Angular extractor uses. Two shapes are excluded from
+that entry because they are unresolvable by design and reporting them would be pure noise: a bare
+module specifier (`element={<Outlet/>}` from `react-router-dom`, or a path alias) and a
+namespace-qualified tag (`element={<React.Suspense>…}`).

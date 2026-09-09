@@ -20,7 +20,7 @@ feed it to your own tooling) is entirely up to you.
 |---|---|
 | [`@ui-manifest-json/core`](packages/core) | The shared `UiManifest` JSON schema (as TypeScript types) and the framework-agnostic dependency-graph resolver both extractors build on. You won't usually install this directly — the extractors depend on it. |
 | [`@ui-manifest-json/angular`](packages/angular) | Extracts from an Angular app's `@Component` classes and `Routes` array. |
-| [`@ui-manifest-json/react`](packages/react) | Extracts from a React app's function/class components and route configuration (`react-router-dom` JSX or object-config style). |
+| [`@ui-manifest-json/react`](packages/react) | Extracts from a React app's function/class components (`.js`/`.jsx`/`.tsx`) and route configuration (`react-router-dom` JSX or object-config style, v3 through v7). |
 | [`@ui-manifest-json/cli`](packages/cli) | One `ui-manifest` command that detects whichever extractor(s) you have installed. |
 
 Install only what you need — a React-only repo never needs to pull in `@angular/compiler`, and

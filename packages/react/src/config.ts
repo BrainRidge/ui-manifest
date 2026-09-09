@@ -4,10 +4,10 @@ export interface ExtractConfig {
   dir: string;
   /**
    * Glob-ish override for which files are considered when hunting for react-router-dom route
-   * setups. When omitted, every scanned `.ts`/`.tsx`/`.jsx` file under `dir` is a candidate (a
-   * file only actually contributes routes if it imports from `react-router-dom` — see
-   * route-parser/index.ts). This field exists so a large app can narrow the search instead of
-   * parsing every file's imports.
+   * setups. When omitted, every scanned `.ts`/`.tsx`/`.jsx`/`.js` file under `dir` is a candidate
+   * (a file only actually contributes routes if it imports from `react-router-dom`/`react-router`
+   * — see route-parser/index.ts). This field exists so a large app can narrow the search instead
+   * of parsing every file's imports.
    */
   routesGlob?: string;
   /** Also emit `ComponentNode.dom` (JSX -> DomNode trees) for every detected component. */

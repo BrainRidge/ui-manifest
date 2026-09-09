@@ -99,7 +99,19 @@ export async function extract(options: Partial<ExtractConfig> = {}): Promise<UiM
   const indexableComponents: IndexableComponent[] = [];
 
   for (const [filePath, sourceFile] of files) {
-    if (!filePath.endsWith('.tsx') && !filePath.endsWith('.jsx')) continue; // JSX only parses in these
+    // Deliberately NOT an extension check. `.js` parses JSX perfectly well: `scriptKindForFile`
+    // maps it to `ts.ScriptKind.JS`, which TypeScript resolves to `LanguageVariant.JSX` — the very
+    // same variant `.jsx`/`.tsx` get — so the AST a `.js` component file yields is identical in
+    // kind to a `.tsx` one. Only `.ts` genuinely cannot hold JSX (`<T>x` is a type assertion
+    // there), and that is exactly what this test excludes.
+    //
+    // The old `.tsx`/`.jsx`-only filter therefore skipped every component in any Babel-compiled
+    // app that writes plain `.js` — CRA, hand-rolled webpack, the whole pre-TS React world, which
+    // is most long-lived React codebases. Nothing errored: the routes pass had no such filter, so
+    // the manifest came out with routes beside `components: []` and an empty `dependencyGraph`,
+    // and under `coverage: "full"` a consumer is licensed to read that as "this app has no
+    // components at all".
+    if (sourceFile.languageVariant !== ts.LanguageVariant.JSX) continue;
     const { components: detected, unnamedSkippedCount } = detectComponents(sourceFile);
     if (config.warnUnnamed && unnamedSkippedCount > 0) {
       diagnostics.push(`${unnamedSkippedCount} unnamed default-exported components skipped in ${filePath}`);
@@ -142,6 +154,76 @@ export async function extract(options: Partial<ExtractConfig> = {}): Promise<UiM
   if (config.withDom) passes.push('dom');
   if (config.dependencyGraph) passes.push('dependency-graph');
 
+  // Runs BEFORE the manifest literal is built, so `diagnostics` is complete by the time it is
+  // attached below — this pass appends entries of its own — and so the emitted key order stays
+  // `diagnostics` then `dependencyGraph` for a manifest that is meant to diff cleanly.
+  let dependencyGraph: RouteDependencyTree[] | undefined;
+  if (config.dependencyGraph) {
+    const { componentIndex, sameFileIndex } = buildComponentIndex(indexableComponents);
+    const ctx: ResolveContext = { files, componentIndex, sameFileIndex };
+    const trees: RouteDependencyTree[] = [];
+    // One matchFn, reused across every route: it's context-aware (reads the "current" component's
+    // own filePath on each call, passed through by core's resolveRouteDependencyTree), so it isn't
+    // tied to any single route's root file the way a pre-bound version would be.
+    const matchFn = createMatchFn(ctx);
+
+    /**
+     * Whether an unresolved route component is worth a diagnostic.
+     *
+     * Two shapes are unresolvable BY DESIGN, and reporting them would make the entry pure noise —
+     * both turned up immediately on react-router's own v6 example apps:
+     *
+     *   - A bare module specifier. `element={<Outlet/>}` resolves `Outlet` to "react-router-dom";
+     *     import resolution here is relative-specifier only (a documented limit — there is no
+     *     module-resolution host, so npm packages and tsconfig path aliases are out of scope), and
+     *     a router built-in has no app component to find to begin with.
+     *   - A namespace-qualified tag. `element={<React.Suspense>...</React.Suspense>}` yields the
+     *     export name "React.Suspense", a framework built-in reached through a namespace import,
+     *     never something this extractor indexes as a component.
+     *
+     * What remains is the case the diagnostic exists for: a relative (or same-file) reference to a
+     * plain identifier that should have resolved to a detected component and did not.
+     */
+    const isReportableUnresolved = (component: NonNullable<RouteNode['component']>): boolean => {
+      if (component.export.includes('.')) return false;
+      // `resolveComponentIdentifier` falls back to the defining file's own path when the
+      // identifier isn't imported, so a same-file component's "module" is a scanned file, not a
+      // specifier — hence the `files` check rather than only a leading-dot test.
+      return component.module.startsWith('.') || files.has(component.module);
+    };
+
+    const visitRoute = (route: RouteNode, definingFile: string): void => {
+      if (route.component) {
+        const rootNode = resolveJsxTagToComponent(route.component.export, definingFile, ctx);
+        if (rootNode) {
+          trees.push(resolveRouteDependencyTree(route.path, rootNode, matchFn));
+        } else if (isReportableUnresolved(route.component)) {
+          // A route naming a component we could not resolve loses a whole tree from
+          // `dependencyGraph`, and losing it silently is indistinguishable from a route whose
+          // component genuinely renders nothing. `docs/schema.md` already promises this entry
+          // ("a route pointing at a component that wasn't found") and the Angular extractor has
+          // always emitted it; the React one just never did. Same wording, so one string greps
+          // across both frameworks.
+          //
+          // Reachable for a barrel nested more than one level deep, and for a component shape
+          // detection does not recognize — e.g. a class extending another component class rather
+          // than React.Component. Emitted only under `--dependency-graph`, the pass that actually
+          // attempts the resolution and where the loss has a visible consequence.
+          diagnostics.push(
+            `dependency graph: no component found for route "${route.path}" (export "${route.component.export}" from "${route.component.module}")`,
+          );
+        }
+      }
+      route.children?.forEach(child => visitRoute(child, definingFile));
+    };
+
+    for (const { filePath, result } of routeResultsByFile) {
+      result.routes.forEach(route => visitRoute(route, filePath));
+    }
+
+    dependencyGraph = trees;
+  }
+
   const manifest: UiManifest = {
     schemaVersion: SCHEMA_VERSION,
     framework: 'react',
@@ -156,34 +238,12 @@ export async function extract(options: Partial<ExtractConfig> = {}): Promise<UiM
     components: indexableComponents.map(e => e.node),
   };
 
+
   if (diagnostics.length > 0) {
     manifest.diagnostics = diagnostics;
   }
-
-  if (config.dependencyGraph) {
-    const { componentIndex, sameFileIndex } = buildComponentIndex(indexableComponents);
-    const ctx: ResolveContext = { files, componentIndex, sameFileIndex };
-    const trees: RouteDependencyTree[] = [];
-    // One matchFn, reused across every route: it's context-aware (reads the "current" component's
-    // own filePath on each call, passed through by core's resolveRouteDependencyTree), so it isn't
-    // tied to any single route's root file the way a pre-bound version would be.
-    const matchFn = createMatchFn(ctx);
-
-    const visitRoute = (route: RouteNode, definingFile: string): void => {
-      if (route.component) {
-        const rootNode = resolveJsxTagToComponent(route.component.export, definingFile, ctx);
-        if (rootNode) {
-          trees.push(resolveRouteDependencyTree(route.path, rootNode, matchFn));
-        }
-      }
-      route.children?.forEach(child => visitRoute(child, definingFile));
-    };
-
-    for (const { filePath, result } of routeResultsByFile) {
-      result.routes.forEach(route => visitRoute(route, filePath));
-    }
-
-    manifest.dependencyGraph = trees;
+  if (dependencyGraph) {
+    manifest.dependencyGraph = dependencyGraph;
   }
 
   return manifest;

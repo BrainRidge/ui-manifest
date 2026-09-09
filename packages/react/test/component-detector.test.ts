@@ -103,4 +103,88 @@ describe('detectComponents', () => {
     expect(components).toHaveLength(1);
     expect(components[0]).toMatchObject({ name: 'Card', isDefaultExport: true });
   });
+
+  it('detects a component in a plain .js file, which parses JSX exactly as .jsx does', () => {
+    const sf = createSourceFile(
+      `
+      import React from 'react';
+
+      class MMLogin extends React.Component {
+        render() {
+          return <form className="login"><input name="user" /></form>;
+        }
+      }
+
+      export default MMLogin;
+    `,
+      'MMLogin.js',
+    );
+    const { components } = detectComponents(sf);
+    expect(components).toHaveLength(1);
+    expect(components[0]).toMatchObject({ name: 'MMLogin', kind: 'class', isDefaultExport: true });
+  });
+
+  it('flips isDefaultExport through an HOC call chain: connect()/withRouter/compose', () => {
+    // `buildComponentIndex` keys a default export under the literal name "default", so getting
+    // this wrong makes `import Page from './Page'` resolve to nothing — dropping every route that
+    // points at a connected component from `dependencyGraph`.
+    for (const exported of [
+      'connect(mapStateToProps, mapDispatchToProps)(CustomerProfilePage)',
+      'withRouter(CustomerProfilePage)',
+      'compose(withRouter, connect(mapStateToProps))(CustomerProfilePage)',
+      'connect(mapStateToProps)(withRouter(CustomerProfilePage))',
+    ]) {
+      const sf = createSourceFile(
+        `
+        import React from 'react';
+        import { connect } from 'react-redux';
+
+        const mapStateToProps = state => ({ user: state.user });
+        const mapDispatchToProps = dispatch => ({ dispatch });
+
+        class CustomerProfilePage extends React.Component {
+          render() { return <div className="profile" />; }
+        }
+
+        export default ${exported};
+      `,
+        'CustomerProfilePage.js',
+      );
+      const { components } = detectComponents(sf);
+      expect(components.map(c => c.name)).toEqual(['CustomerProfilePage']);
+      expect(components[0]!.isDefaultExport, exported).toBe(true);
+    }
+  });
+
+  it('leaves isDefaultExport alone when an HOC expression references two local components', () => {
+    // Two candidates and no way to tell which is being exported — leaving both unresolved keeps a
+    // wrong "default" key out of the index, which is worse than a missing one.
+    const sf = createSourceFile(
+      `
+      import React from 'react';
+
+      const Fallback = () => <div />;
+      const Page = () => <main />;
+
+      export default withBoundary(Fallback)(Page);
+    `,
+      'Page.js',
+    );
+    const { components } = detectComponents(sf);
+    expect(components.map(c => c.isDefaultExport)).toEqual([false, false]);
+  });
+
+  it('does not mistake a sibling component rendered by an inline callback for the default export', () => {
+    const sf = createSourceFile(
+      `
+      const Header = () => <header />;
+
+      export default loadable(() => <Header />);
+    `,
+      'Header.js',
+    );
+    const { components } = detectComponents(sf);
+    expect(components.map(c => c.name)).toEqual(['Header']);
+    expect(components[0]!.isDefaultExport).toBe(false);
+  });
 });

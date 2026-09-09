@@ -150,10 +150,10 @@ export function detectComponents(sourceFile: ts.SourceFile): ComponentDetectionR
     }
 
     // export default <expr>;  where <expr> is an inline (possibly anonymous) function/class,
-    // optionally forwardRef/memo-wrapped. `export default Identifier;` referring to an earlier
-    // top-level declaration is intentionally not re-handled here — that declaration was already
-    // picked up above (its own isDefaultExport stays false, which is a known, documented
-    // simplification: we don't retroactively flip it for a separate `export default X` statement).
+    // optionally forwardRef/memo-wrapped. `export default Identifier;` and `export default
+    // someHoc(Identifier);` referring to an earlier top-level declaration are not handled here —
+    // that declaration was already picked up above, and its `isDefaultExport` is flipped by the
+    // second pass at the end of this function.
     if (ts.isExportAssignment(stmt) && !stmt.isExportEquals) {
       const unwrapped = unwrapWrapperCalls(stmt.expression);
       if (ts.isIdentifier(unwrapped)) continue;
@@ -196,10 +196,60 @@ export function detectComponents(sourceFile: ts.SourceFile): ComponentDetectionR
   for (const stmt of sourceFile.statements) {
     if (!ts.isExportAssignment(stmt) || stmt.isExportEquals) continue;
     const unwrapped = unwrapWrapperCalls(stmt.expression);
-    if (!ts.isIdentifier(unwrapped)) continue;
-    const match = components.find(c => c.name === unwrapped.text);
+    const match = ts.isIdentifier(unwrapped)
+      ? components.find(c => c.name === unwrapped.text)
+      : ts.isCallExpression(unwrapped)
+        ? componentExportedThroughHoc(unwrapped, components)
+        : undefined;
     if (match) match.isDefaultExport = true;
   }
 
   return { components, unnamedSkippedCount };
+}
+
+/**
+ * The component a `export default <call expression>` ultimately exports, for the HOC-wrapped forms
+ * `unwrapWrapperCalls` deliberately doesn't cover: `connect(mapState)(Page)`, `withRouter(Page)`,
+ * `compose(a, b)(Page)`, `connect(...)(withRouter(Page))`, `withStyles(styles)(Page)`.
+ *
+ * This is not cosmetic. `buildComponentIndex` keys a default export under the literal name
+ * "default", so with the flag wrong `import Page from './Page'` resolves to nothing — which means
+ * every route pointing at a connected component finds no component and its entire dependency tree
+ * is dropped from `dependencyGraph`. react-redux's `connect()` is not a niche wrapper; it is how a
+ * large share of existing React apps export every page they have.
+ *
+ * Resolution rule: the expression must reference EXACTLY ONE component declared in this file. An
+ * HOC's other arguments are `mapStateToProps`-shaped functions and option objects, never a second
+ * component, so one match is the overwhelmingly common case — and two matches are left unresolved
+ * rather than guessed between. Function and class bodies are not descended into, so an inline
+ * callback that happens to render a sibling component (`someFactory(() => <Header/>)`) cannot be
+ * mistaken for the thing being exported.
+ */
+function componentExportedThroughHoc(
+  expr: ts.CallExpression,
+  components: DetectedComponent[],
+): DetectedComponent | undefined {
+  const byName = new Map(components.map(c => [c.name, c]));
+  const matches = new Set<DetectedComponent>();
+
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node)) {
+      const found = byName.get(node.text);
+      if (found) matches.add(found);
+      return;
+    }
+    if (
+      ts.isArrowFunction(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isFunctionDeclaration(node) ||
+      ts.isClassExpression(node) ||
+      ts.isClassDeclaration(node)
+    ) {
+      return; // an inline callback's body is not the component being exported
+    }
+    ts.forEachChild(node, visit);
+  };
+
+  visit(expr);
+  return matches.size === 1 ? [...matches][0] : undefined;
 }

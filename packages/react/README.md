@@ -16,14 +16,17 @@ Nothing leaves your environment. This reads your source and writes JSON.
 
 ## How it works
 
-A syntactic pass over your `.ts`/`.tsx`/`.jsx` files via the `typescript` package's AST. **No
+A syntactic pass over your `.ts`/`.tsx`/`.jsx`/`.js` files via the `typescript` package's AST. **No
 type-checker `Program`, no `tsc` project load** — so it needs no tsconfig, no installed
-`node_modules`, and no compiling project.
+`node_modules`, and no compiling project. A Babel-compiled app whose components all live in plain
+`.js` files is read the same as a TypeScript one.
 
 Routes come from either React Router pattern, detected per file:
 
 - `createBrowserRouter` / `createHashRouter` / `createMemoryRouter` with a route-object array
-- a `<Routes>…<Route/>…</Routes>` JSX tree
+- a JSX route table: `<Routes>…<Route/>…</Routes>` on v6/v7, `<Switch>…<Route/>…</Switch>` (or bare
+  `<Route>`s) on v3/v4/v5 — with `element={<X/>}`, `component={X}`, `render={() => <X/>}` and
+  `<Route path="/x"><X/></Route>` all read as the route's target
 
 Both `react-router-dom` and the base `react-router` package are recognised — v6.4+ apps
 increasingly import from the latter directly.
