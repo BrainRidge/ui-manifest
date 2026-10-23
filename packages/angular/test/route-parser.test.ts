@@ -66,8 +66,15 @@ describe('collectRoutesFromSource', () => {
     expect(diagnostics).toEqual(['unresolved loadComponent target: someWeirdFactory()']);
   });
 
-  it('returns an empty route list when no `routes` array is found', () => {
+  it('returns an empty route list AND says so when no routes array is found', () => {
+    // The diagnostic is the point. An empty `routes[]` from a file that was never the routes file
+    // reads exactly like an app with no routes, and the fix — point `--routes` somewhere else —
+    // is only findable if the run states what it looked for.
     const result = collectRoutesFromSource(`export const somethingElse = [];`, '/fake/app.routes.ts');
-    expect(result).toEqual({ routes: [], diagnostics: [] });
+    expect(result.routes).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      'no routes array found in app.routes.ts (looked for a `routes` array, a default-exported array, ' +
+      'and RouterModule.forRoot/forChild(...) in it and in the modules it imports)',
+    ]);
   });
 });

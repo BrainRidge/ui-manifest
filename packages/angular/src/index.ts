@@ -154,6 +154,9 @@ function toUncapturable(diagnostic: string): Uncapturable | null {
     [/^template parse error in (.+?):/, 'templateParseError'],
     [/^unsupported template node kind "(.+?)" skipped in (.+)$/, 'unsupportedTemplateNode'],
     [/^unresolved load(Component|Children) target/i, 'unresolvedLazyChunk'],
+    // A lazy module whose route table this pass could not reach is a page-map gap, and the same
+    // kind of gap as an unresolved target — the chunk is known to exist and its contents are not.
+    [/^loadChildren target has no routes array:/, 'unresolvedLazyChunk'],
     [/^could not resolve template source for (.+)$/, 'templateParseError'],
   ];
   for (const [pattern, kind] of known) {

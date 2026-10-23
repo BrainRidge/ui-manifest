@@ -26,12 +26,38 @@ The trade is that anything not visible syntactically is left out rather than gue
 `parseTemplate()` — the same parser Angular's own compiler uses. It's an optional peer dependency,
 imported lazily only when you pass the flag.
 
+## Route shapes it reads
+
+Both of Angular's routing styles, from one entry point:
+
+- **Standalone** (`app.routes.ts`) — `export const routes: Routes = [...]` or a default-exported
+  array; `loadComponent`, eager `component:`, and `loadChildren` into another routes file.
+- **NgModule** (`app-routing.module.ts`, via `--routes`) — `RouterModule.forRoot(...)` /
+  `forChild(...)` under any variable name, and lazy `loadChildren` into a feature **module** that
+  holds no routes itself and imports a sibling `*-routing.module.ts`. That is what
+  `ng generate module --routing` emits, so it's the usual case rather than an edge one.
+
+For an NgModule app, point `--routes` at your root routing module:
+
+```bash
+npx ui-manifest-angular --routes app-routing.module.ts --with-dom --out ui-manifest.json
+```
+
+Feature modules are followed through their `@NgModule({ imports: [...] })` — including a spread of
+a locally-declared array (`imports: [...MODULES]`) — up to four modules deep, and every
+`RouterModule.forChild(...)` table found is included, matching how Angular concatenates them.
+A lazy module whose routes can't be reached is reported in `diagnostics` and typed in
+`uncapturable` as `unresolvedLazyChunk`, never dropped silently.
+
+Not resolved: tsconfig path aliases (`@app/...`) in a `loadChildren` specifier, and route arrays
+built at runtime. Both are reported rather than guessed at.
+
 ## Options
 
 | Flag | Default | |
 |---|---|---|
 | `--dir <path>` | `src/app` | Directory to scan |
-| `--routes <file>` | `app.routes.ts` | Routes file, relative to `--dir` |
+| `--routes <file>` | `app.routes.ts` | Routes file, relative to `--dir` — use `app-routing.module.ts` for an NgModule app |
 | `--with-dom` | off | Also emit each component's template tree |
 | `--dependency-graph` | off | Per route, splice every descendant component's template in recursively (requires `--with-dom`) |
 | `--base-href <path>` | detected | Override the detected `<base href>` |
